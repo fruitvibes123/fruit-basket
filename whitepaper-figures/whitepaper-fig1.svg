@@ -1,0 +1,34 @@
+<svg viewBox="0 0 840 178" xmlns="http://www.w3.org/2000/svg" role="img"
+  aria-label="The shipped image: boot, persist skeleton and rootfs components concatenated, plus the optional sealed data volume"
+  font-family="ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace">
+  <text x="0" y="13" fill="#aee3e3" font-size="11" letter-spacing="2">FB-IMAGE-&lt;LABEL&gt;.IMG — CONCATENATED, CUT POINTS IN THE SIDECAR</text>
+  <!-- boot -->
+  <rect x="0" y="28" width="196" height="52" rx="4" fill="#3987e5"><title>boot component — ext4, 128 MiB: extlinux + kernels A+B + initramfs</title></rect>
+  <text x="10" y="50" fill="#0d1f1f" font-size="13" font-weight="700">boot</text>
+  <text x="10" y="68" fill="#0d1f1f" font-size="11">ext4 · 128 MiB</text>
+  <text x="0" y="100" fill="#8fb8b8" font-size="11">extlinux + kernels A+B</text>
+  <text x="0" y="115" fill="#8fb8b8" font-size="11">+ initramfs + conf</text>
+  <!-- persist skeleton -->
+  <rect x="198" y="28" width="110" height="52" rx="4" fill="#199e70"><title>persist skeleton — ext4, 16 MiB, no journal; grown at first boot</title></rect>
+  <text x="208" y="50" fill="#0d1f1f" font-size="13" font-weight="700">persist</text>
+  <text x="208" y="68" fill="#0d1f1f" font-size="11">ext4 · 16 MiB</text>
+  <text x="198" y="100" fill="#8fb8b8" font-size="11">no journal; grown</text>
+  <text x="198" y="115" fill="#8fb8b8" font-size="11">at first boot</text>
+  <!-- rootfs: squashfs + hash tree -->
+  <rect x="310" y="28" width="210" height="52" rx="4" fill="#9085e9"><title>rootfs component — squashfs (xz), padded to a 4 KiB boundary</title></rect>
+  <rect x="522" y="28" width="88" height="52" rx="4" fill="#b9b1f2"><title>dm-verity hash tree — root hash goes to the kernel command line</title></rect>
+  <text x="320" y="50" fill="#0d1f1f" font-size="13" font-weight="700">rootfs squashfs</text>
+  <text x="320" y="68" fill="#0d1f1f" font-size="11">xz · ~15 MiB dense</text>
+  <text x="528" y="50" fill="#0d1f1f" font-size="12" font-weight="700">hash</text>
+  <text x="528" y="66" fill="#0d1f1f" font-size="12" font-weight="700">tree</text>
+  <text x="310" y="100" fill="#8fb8b8" font-size="11">padded to 4 KiB, then the verity tree;</text>
+  <text x="310" y="115" fill="#8fb8b8" font-size="11">root hash → kernel cmdline (§5.1)</text>
+  <!-- optional sealed data volume -->
+  <rect x="612" y="28" width="228" height="52" rx="4" fill="#c98500" fill-opacity="0.5"
+        stroke="#c98500" stroke-width="1.6" stroke-dasharray="6 4"><title>sealed data volume — optional squashfs + dm-verity payload component (§7.5)</title></rect>
+  <text x="622" y="50" fill="#f4e9d0" font-size="13" font-weight="700">sealed data volume</text>
+  <text x="622" y="68" fill="#f4e9d0" font-size="11">squashfs + verity · multi-GiB</text>
+  <text x="612" y="100" fill="#8fb8b8" font-size="11">only when the build declares one</text>
+  <text x="612" y="115" fill="#8fb8b8" font-size="11">(§7.5) — data, never code</text>
+  <text x="0" y="146" fill="#7fa8a8" font-size="10.5" font-style="italic">schematic — segment widths not to scale; exact byte offsets/sizes live in the layout sidecar</text>
+</svg>

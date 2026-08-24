@@ -1,0 +1,40 @@
+# rambutan — the hand-rolled UEFI Secure Boot loader (the
+# `efi-loader` crate, carrying the fruit-orchard convention: the spiky armored shell
+# around the seed — SB armor around the kernel. Kin to lychee, like the fruit).
+#
+# SEPARATE workspace (NOT a member of the root recipes workspace) — same constraint as
+# initramfs-init/box-init: cargo profiles are workspace-global, the root workspace pins
+# `[profile.release] panic = "unwind"` as a LOAD-BEARING setting (image-decode
+# panic-isolation), and a no_std EFI loader REQUIRES `panic = "abort"` (no unwinding
+# machinery in the boot window; the panic_handler halts). The two cannot coexist in one
+# workspace. The verification suite gates this crate via explicit --manifest-path lines
+# (standalone workspaces are invisible to `--workspace`/`--all`).
+#
+# Build the PE:  cargo build --release --target x86_64-unknown-uefi
+#   (component: `rustup target add x86_64-unknown-uefi` — Tier-2 with precompiled core,
+#    no -Zbuild-std; the central pin set documents it for host + container.)
+# Host tests:    cargo test
+#   (core.rs is the host-tested pure half; main.rs/efi.rs are proven at the OVMF gate.)
+
+[workspace]
+
+[package]
+name = "rambutan"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[dependencies]
+# Digest gate for the LoadFile2-served initrd (spec §3.2.4). default-features = false
+# keeps the dependency tree core-only — no std/alloc creep into the boot window (the
+# CRUX-style tree lock in the verification suite asserts this).
+sha2 = { version = "0.10", default-features = false }
+
+[profile.release]
+opt-level     = "s"
+lto           = true
+codegen-units = 1
+panic         = "abort" # fail-closed halt; no unwinding in the boot window (spec §3.2)
+# Byte-reproducibility: the debug-directory link flag lives in build.rs
+# (cargo:rustc-link-arg-bins) — see the comment there; `strip` does NOT remove the
+# lld RSDS record on this target (verified empirically at the Task 1.8 gate).

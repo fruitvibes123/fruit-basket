@@ -1,0 +1,27 @@
+[package]
+name = "fb-backup"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[[bin]]
+name = "fb-backup"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+# Runtime sqlx (VACUUM INTO via sqlx::query(...), NOT the compile-checked query! macro → no .sqlx entry).
+# sqlite-unbundled links the system libsqlite3.
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite-unbundled"] }
+chrono = "0.4"
+tar = "0.4"
+flate2 = "1"
+# #[tokio::main(flavor = "current_thread")] + the multi_thread test → rt-multi-thread covers both.
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+# umask(0o077) + OpenOptionsExt mode. Unix-only.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"

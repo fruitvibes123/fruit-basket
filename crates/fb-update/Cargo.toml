@@ -1,0 +1,66 @@
+# fb-update — the box-side A/B OS-update engine (os-update A/B v1; the design record names
+# the update invariants).
+#
+# SEPARATE workspace (NOT a member of the FB root workspace) — the FOURTH standalone
+# alongside box-init/initramfs-init/rambutan: it carries quince -> dragonfruit, and the
+# root workspace stays free of the dragonfruit-adjacent crates by construction (the same
+# isolation initramfs-init stands alone for). Gated via an explicit --manifest-path invocation.
+#
+# ONE crate, THREE bins (plan S8 decision, made at Task 8): `fb-update` (apply/status/
+# reconcile-floors, pulls quince) and `fb-mark-good` (decide/probe/commit — no signature
+# verify; its shipped tree still INCLUDES quince/dragonfruit as dead verify code, which is
+# accepted, not optimized: dragonfruit already ships in the box via initramfs-init, and the
+# box-never-signs backstop [#[cfg(feature="sign")] compile_error!] covers both bins
+# regardless. The crypto-free-subset split is a NAMED deferred nicety, not built in v1).
+[workspace]
+
+[package]
+name = "fb-update"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[lib]
+name = "fb_update"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fb-update"
+path = "src/bin/fb_update.rs"
+
+[[bin]]
+name = "fb-mark-good"
+path = "src/bin/fb_mark_good.rs"
+
+[dependencies]
+# The box-side artifact-verify gate: verify_artifact_clocked (S0 — window + minctr floor)
+# over the operator-signed update manifest. dragonfruit comes verify-only THROUGH quince —
+# no `sign` in this graph (T17's allowlist + the C1 backstop lock it).
+quince = { path = "../quince" }
+# Component re-read hash-verify before the promotion point (write-then-verify, spec §2) +
+# the manifest sha256 for the bundle binding. Core-only, same form as initramfs-init.
+sha2 = { version = "0.10", default-features = false }
+# O_SYNC/flock/reboot(2) + the raw-partition ADV I/O (T13/T14). Same dep initramfs-init uses.
+libc = "0.2"
+# The fb-mark-good §5 C-D health probe (TLS handshake + time-valid leaf + tenant route
+# through the loopback edge). rustls/ring = the SAME TLS stack the box already ships in
+# fb-acme (instant-acme → hyper-rustls; never
+# openssl/native-tls); x509-parser = the fb-cert-check leaf parser, here checking the
+# validity window at handshake time. Sync sans-io (`rustls::Stream`) — no tokio/client dep.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+x509-parser = "0.16"
+
+[features]
+# POISONED feature name (the quince/C1 posture): fb-update must NEVER sign. Declaring `sign`
+# makes the cfg expected (clippy-clean) while the lib.rs `#[cfg(feature = "sign")]
+# compile_error!` turns any attempt to ENABLE it into a compile error. Empty (enables nothing).
+sign = []
+
+[dev-dependencies]
+# Mint operator-signed test bundles with the REAL signer (dev-only; `--edges dev` is OUT of
+# the shipped crypto-sentry allowlist, so this does not breach the box-never-signs CRUX).
+dragonfruit = { path = "../../../seed-vault/crates/dragonfruit", features = ["sign", "sanctioned-signer"] }
+ed25519-dalek = "2"
+sha2 = "0.10"
+tempfile = "3"
+hex = "0.4"

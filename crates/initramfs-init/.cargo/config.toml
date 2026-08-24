@@ -1,0 +1,11 @@
+# The PID-1 initramfs-init binary links STATICALLY (the opposite of the app tenant).
+# It runs in the initramfs in EARLY BOOT, before the rootfs (squashfs) is mounted, so NONE of the
+# rootfs .so libs (musl libc, libsqlite3, …) are available — a dynamic init couldn't load. Hence
+# explicit `+crt-static`.
+#
+# This OVERRIDES the repo-root .cargo/config.toml (which sets `-crt-static` for the app's dynamic
+# musl): cargo reads the NEAREST .cargo/config.toml first, so building from this crate dir picks up
+# the +crt-static here. Without it, the root's dynamic setting would force this init dynamic — wrong.
+# (Added 2026-05-27 with build_initramfs; the root config flipped to -crt-static the same day.)
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]

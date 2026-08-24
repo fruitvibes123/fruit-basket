@@ -1,0 +1,61 @@
+[package]
+name = "fb-acme"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[[bin]]
+name = "fb-acme"
+path = "src/main.rs"
+
+[dependencies]
+axum       = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+tokio      = { version = "1", features = ["rt-multi-thread", "net", "macros", "fs", "signal", "time"] }
+tower      = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", default-features = false, features = ["fs"] }
+clap       = { version = "4", features = ["derive", "env"] }
+thiserror  = "1"
+# ACME renewal client (`renew` subcommand). rustls + ring only (no aws-lc /
+# openssl / native-tls — the no-OpenSSL-linkage decision + the workspace
+# surface-cut posture). `rcgen` lets `order.finalize()` auto-generate the cert
+# keypair + CSR; `hyper-rustls` is the built-in async HTTP client.
+instant-acme = { version = "0.8", default-features = false, features = ["ring", "hyper-rustls", "rcgen"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+# Leaf classification for the scheduled-renewal due-check (`due.rs`): parse the
+# FIRST CERTIFICATE block of full.pem in-Rust (the fb-cert-check H-1 precedent).
+# Already a box dependency (via fb-cert-check) — no NEW supply-chain crate to
+# vet/pin; it does add the edge (and bytes) to THIS binary.
+x509-parser = "0.16"
+
+# C-1 (network-bringup holistic R2): the box ships NO system CA trust store
+# (`/etc/ssl/certs` is empty — no `ca-certificates` apk), so instant-acme's default
+# client (rustls-platform-verifier → rustls-native-certs → reads `/etc/ssl/certs`)
+# has ZERO trust anchors and the TLS handshake to Let's Encrypt's API fails. Fix:
+# build the HTTPS client ourselves from the COMPILED-IN Mozilla roots (`webpki-roots`)
+# and inject it via `Account::builder_with_http`. No filesystem trust store; the roots
+# ride inside the signed, dm-verity-protected binary. ring-only (no aws-lc in the lock,
+# verified) so rustls auto-installs the ring provider. Versions track instant-acme's
+# own hyper stack so `HyperClient<_, instant_acme::BodyWrapper<Bytes>>` unifies.
+rustls       = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2"] }
+hyper-util   = { version = "0.1", features = ["client-legacy", "http1", "http2", "tokio"] }
+webpki-roots = "1"
+bytes        = "1"
+
+# O_NOFOLLOW for the hardened cert-file writes (mirrors the recipes
+# crate's deploy-key write discipline). Unix-only (the image is musl/Linux).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile        = "3"
+http            = "1"
+http-body-util  = "0.1"
+# In-test PEM fixtures for the due-check leaf classification (self-signed vs
+# CA-signed leaf vs leaf+self-signed-root chain). ring backend, no aws-lc —
+# mirrors fb-cert-check's dev-dep pin.
+rcgen           = { version = "0.13", default-features = false, features = ["pem", "crypto", "ring"] }
+
+# Release profile lives in the workspace root Cargo.toml; non-root
+# package profiles are ignored by cargo.

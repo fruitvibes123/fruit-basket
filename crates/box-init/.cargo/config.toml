@@ -1,0 +1,3 @@
+# Static musl: a PID-1 with zero dynamic-linker dependency at boot (mirrors crates/initramfs-init).
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=+crt-static"]

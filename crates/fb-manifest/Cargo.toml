@@ -1,0 +1,13 @@
+[package]
+name = "fb-manifest"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[dependencies]
+# The service-manifest TCB-input parser (spec §5.3, R7-folded). The substrate is the `toml` crate —
+# NOT serde_json; the §5.3 re-bless empirically grounded the fail-closed contract on toml 0.8.x
+# (apk_world.rs::from_toml_str precedent). serde derive only; NO dragonfruit (CRUX: this crate never
+# signs — it is parsed/rendered, not a signer).
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

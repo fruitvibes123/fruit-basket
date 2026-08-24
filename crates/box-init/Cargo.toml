@@ -1,0 +1,55 @@
+# box-init — the box PID-1 (post-switch_root `/sbin/init`), the signed-exec init.
+#
+# STANDALONE workspace (NOT a member of the root recipes workspace), exactly like
+# crates/initramfs-init. Cargo profiles are workspace-global and the root workspace pins
+# `[profile.release] panic = "unwind"` (LOAD-BEARING: image-decode catch_unwind).
+# A PID-1 panic must abort -> reboot (no unwinding machinery), so this crate requires
+# `panic = "abort"` and therefore stands alone.
+#
+# Built STATIC musl (its own .cargo/config.toml +crt-static) for zero dynamic-linker dependency
+# at the boot-critical moment + the simplest IMA story (one BPRM_CHECK on box-init; no .so
+# MMAP_CHECK chain). The services it execs (s6-svscan, dropbear, haproxy, recipes, ...) stay
+# dynamic + appraised as before.
+#
+# Build: `cargo build --release --target x86_64-unknown-linux-musl` (static; `ldd` => not dynamic).
+[workspace]
+
+[package]
+name = "box-init"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[lib]
+name = "box_init"
+path = "src/lib.rs"
+
+[[bin]]
+name = "box-init"
+path = "src/main.rs"
+
+[dependencies]
+# mount(2) for the early pseudo-fs + /run,/tmp tmpfs (std has no mount). The rest of box-init's
+# syscalls (symlink/mkdir/exec/spawn) go through std. rustix = typed, secure-by-construction
+# wrappers; the linux_raw backend needs no libc for these.
+rustix = { version = "1", features = ["mount"] }
+# reboot(2)/pause(2) for the PID-1 fatal path (`fatal`): box-init reboots ITSELF on a fatal rather than
+# relying on the kernel "init died" panic + an unbuilt `panic=` cmdline token. Mirrors
+# initramfs-init, which uses the same two libc calls; statically linked into the musl binary.
+libc = "0.2"
+# The FB-owned service-manifest schema: box-init PARSES the baked, signed `etc/box-topology.toml`
+# (`parse_topology`, fail-closed) at boot to build its app-domain oneshots. The
+# parser only ever sees a dm-verity+IMA-protected baked file (trusted input — the integrity layer is the
+# real guard, this is the fail-closed backstop). Pulls serde+toml into the static-musl PID-1 binary.
+fb-manifest = { path = "../fb-manifest" }
+
+[dev-dependencies]
+# tempdir-rooted unit tests for scandir/oneshot wiring (no real mounts/root needed).
+tempfile = "3"
+
+[profile.release]
+opt-level     = "z"
+lto           = "fat"
+codegen-units = 1
+strip         = true
+panic         = "abort" # PID-1 panic -> reboot, no unwinding (mirrors initramfs-init).

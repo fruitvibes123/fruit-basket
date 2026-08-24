@@ -1,0 +1,41 @@
+# fb-weights — the hotswappable-model runtime: the persisted weights store (current signed manifest
+# + co-located anti-rollback floor), the boot-time weights-verity-setup helper, and the flocked swap
+# sequencer (hotswap v4 spec §3–§6). STANDALONE workspace (the fb-update/quince shape): a box-side
+# root binary, gated via an explicit --manifest-path invocation.
+[workspace]
+
+[package]
+name = "fb-weights"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[dependencies]
+# The mount(2)/ioctl FFI for the real SetupOps (the run-script helper runs as root pre-uid-drop).
+libc = "0.2"
+# sha256(manifest_bytes) — the quince artifact hash. Same audited dep + form as initramfs-init.
+sha2 = { version = "0.10", default-features = false }
+# The box-side verify gate (Purpose::Weights, clock-free at boot / clocked at swap). dragonfruit is
+# taken verify-only THROUGH quince — no `sign` in this graph (box-never-signs).
+quince = { path = "../quince" }
+# The extracted runtime dm-verity + PARTUUID layer (setup_verity_device / dev_remove / resolve).
+fb-verity-rt = { path = "../fb-verity-rt" }
+
+[dev-dependencies]
+# Fixture dirs for the store round-trip tests.
+tempfile = "3"
+# The Rider-2 disjointness guard asserts against fb-update's REAL floor-path constants (dev-only —
+# never enters the shipped tree; the rootfs reconcile and the weights store must provably never
+# share a file).
+fb-update = { path = "../fb-update" }
+# Mint operator-signed Weights test bundles with the REAL signer (dev-only; `--edges dev` is OUT of
+# the shipped crypto-sentry allowlist — box-never-signs holds). `sanctioned-signer` opts the
+# dev-only fixture-minting past dragonfruit's compile_error! guard (the quince/initramfs pattern).
+dragonfruit = { path = "../../../seed-vault/crates/dragonfruit", features = ["sign", "sanctioned-signer"] }
+ed25519-dalek = "2"
+
+# The box binary is `/usr/bin/fb-weights` (hyphen — the run-script prelude + the publish key); the
+# default target name from `src/bin/fb_weights.rs` would be underscored (the fb-update precedent).
+[[bin]]
+name = "fb-weights"
+path = "src/bin/fb_weights.rs"

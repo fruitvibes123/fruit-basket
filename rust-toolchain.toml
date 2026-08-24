@@ -1,0 +1,5 @@
+# GENERATED — DO NOT EDIT BY HAND.
+# The toolchain pin follows the maintainers' central pin set.
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy"]

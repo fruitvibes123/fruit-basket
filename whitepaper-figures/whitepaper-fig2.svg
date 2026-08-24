@@ -1,0 +1,48 @@
+<svg viewBox="0 0 840 330" xmlns="http://www.w3.org/2000/svg" role="img"
+  aria-label="The two firmware-selected disk layouts: the four-partition MBR reference arm, and the GPT arm with the optional fifth sealed-data partition"
+  font-family="ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace">
+  <text x="0" y="13" fill="#aee3e3" font-size="11" letter-spacing="2">BIOS/MBR ARM — THE REFERENCE LAYOUT (4 PARTITIONS, 1 MiB-ALIGNED)</text>
+  <!-- row 1: MBR arm -->
+  <rect x="0" y="26" width="16" height="48" rx="3" fill="#3a5c5c"><title>MBR sector — partition table; 440-byte stage-1 boot code written LAST</title></rect>
+  <rect x="18" y="26" width="168" height="48" rx="4" fill="#3987e5"><title>p1 boot — ext4, 128 MiB, read-only, bootable; kernels A+B</title></rect>
+  <text x="28" y="46" fill="#0d1f1f" font-size="12.5" font-weight="700">p1 boot</text>
+  <text x="28" y="63" fill="#0d1f1f" font-size="11">ext4 · 128 MiB · ro</text>
+  <rect x="188" y="26" width="150" height="48" rx="4" fill="#9085e9"><title>p2 slot A — raw rootfs component: squashfs + verity tree</title></rect>
+  <text x="198" y="46" fill="#0d1f1f" font-size="12.5" font-weight="700">p2 slot A</text>
+  <text x="198" y="63" fill="#0d1f1f" font-size="11">squashfs+verity</text>
+  <rect x="340" y="26" width="150" height="48" rx="4" fill="none" stroke="#7fa8a8" stroke-width="1.6" stroke-dasharray="6 4"><title>p3 slot B — zeroed at install; the update flip target</title></rect>
+  <text x="350" y="46" fill="#8fb8b8" font-size="12.5" font-weight="700">p3 slot B</text>
+  <text x="350" y="63" fill="#8fb8b8" font-size="11">zeroed at install</text>
+  <rect x="492" y="26" width="348" height="48" rx="4" fill="#199e70"><title>p4 persist — ext4, rest of disk, LABEL=persist; the only writable partition</title></rect>
+  <text x="502" y="46" fill="#0d1f1f" font-size="12.5" font-weight="700">p4 persist</text>
+  <text x="502" y="63" fill="#0d1f1f" font-size="11">ext4 · rest of disk · LABEL=persist</text>
+  <text x="0" y="92" fill="#8fb8b8" font-size="11">MBR</text>
+  <text x="188" y="92" fill="#8fb8b8" font-size="11">A/B slots ~4× the rootfs — the update flip + rollback substrate (§13.2)</text>
+  <text x="492" y="108" fill="#8fb8b8" font-size="11">app data / certs / logs — grown at first boot</text>
+
+  <text x="0" y="152" fill="#aee3e3" font-size="11" letter-spacing="2">GPT ARMS (BIOS+GPT / UEFI) — + THE OPTIONAL SEALED DATA VOLUME (5 PARTITIONS)</text>
+  <!-- row 2: GPT arm -->
+  <rect x="0" y="165" width="16" height="48" rx="3" fill="#3a5c5c"><title>protective MBR + primary GPT header/entries</title></rect>
+  <rect x="18" y="165" width="140" height="48" rx="4" fill="#3987e5"><title>p1 boot — ext4, 128 MiB; on UEFI the ESP carrying the Rambutan loader</title></rect>
+  <text x="28" y="185" fill="#0d1f1f" font-size="12.5" font-weight="700">p1 boot</text>
+  <text x="28" y="202" fill="#0d1f1f" font-size="11">ext4 · 128 MiB</text>
+  <rect x="160" y="165" width="128" height="48" rx="4" fill="#9085e9"><title>p2 slot A — raw rootfs component</title></rect>
+  <text x="170" y="185" fill="#0d1f1f" font-size="12.5" font-weight="700">p2 slot A</text>
+  <text x="170" y="202" fill="#0d1f1f" font-size="11">squashfs+verity</text>
+  <rect x="290" y="165" width="128" height="48" rx="4" fill="none" stroke="#7fa8a8" stroke-width="1.6" stroke-dasharray="6 4"><title>p3 slot B — zeroed at install</title></rect>
+  <text x="300" y="185" fill="#8fb8b8" font-size="12.5" font-weight="700">p3 slot B</text>
+  <text x="300" y="202" fill="#8fb8b8" font-size="11">zeroed</text>
+  <rect x="420" y="165" width="176" height="48" rx="4" fill="#199e70"><title>p4 persist — ext4, rest of disk</title></rect>
+  <text x="430" y="185" fill="#0d1f1f" font-size="12.5" font-weight="700">p4 persist</text>
+  <text x="430" y="202" fill="#0d1f1f" font-size="11">ext4 · rest of disk</text>
+  <rect x="598" y="165" width="224" height="48" rx="4" fill="#c98500"><title>p5 sealed data volume — squashfs + dm-verity, EIO mode, single-slot (§7.5)</title></rect>
+  <text x="608" y="185" fill="#0d1f1f" font-size="12.5" font-weight="700">p5 sealed data</text>
+  <text x="608" y="202" fill="#0d1f1f" font-size="11">verity · EIO · single-slot</text>
+  <rect x="824" y="165" width="16" height="48" rx="3" fill="#3a5c5c"><title>backup GPT header/entries at the disk tail</title></rect>
+  <text x="0" y="231" fill="#8fb8b8" font-size="11">GPT</text>
+  <text x="598" y="231" fill="#8fb8b8" font-size="11">multi-GiB payload (§7.5); rides</text>
+  <text x="598" y="246" fill="#8fb8b8" font-size="11">updates as content, no A/B</text>
+  <text x="824" y="246" fill="#8fb8b8" font-size="11" text-anchor="end">backup GPT</text>
+  <text x="0" y="282" fill="#7fa8a8" font-size="10.5" font-style="italic">schematic — widths not to scale; all partitions 1 MiB-aligned; the GPT arms address partitions by baked PARTUUID (§5.1)</text>
+  <text x="0" y="300" fill="#7fa8a8" font-size="10.5" font-style="italic">boot-enabling bytes are written LAST — a failed install is cleanly unbootable, never half-alive (§10.1)</text>
+</svg>

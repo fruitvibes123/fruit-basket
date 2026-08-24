@@ -1,0 +1,30 @@
+[package]
+name = "fb-oneshots"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[[bin]]
+name = "fb-oneshots"
+path = "src/main.rs"
+
+[dependencies]
+# derive-rescue-host-keys: deterministic ed25519 dropbear host-key derivation (HKDF; musl-clean,
+# pure-Rust). Pin map (spec §3): grape reaches Fruit Basket via THIS binary only.
+grape = { path = "../../../seed-vault/crates/grape" }
+# selfsign-acme-cert: P-256 self-signed ACME bootstrap leaf. ring backend (NOT aws-lc) — matches the
+# workspace surface-cut posture. Exact feature set
+# copied from the root Cargo.toml's rcgen pin.
+rcgen = { version = "0.13", default-features = false, features = ["pem", "crypto", "ring", "x509-parser", "zeroize"] }
+clap = { version = "4", features = ["derive"] }
+# cert-reload-check: SHA-256 content hash of full.pem for change-detection
+# (watcher spec §4.3 — an already-in-the-lock hasher via grape; a new direct
+# edge, not a new crate).
+sha2 = "0.10"
+
+# sethostname(2) + O_NOFOLLOW opens. Unix-only (the image is musl/Linux).
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"

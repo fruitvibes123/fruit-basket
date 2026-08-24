@@ -1,0 +1,21 @@
+# fb-verity-rt — the RUNTIME dm-verity + partition-discovery layer, extracted from initramfs-init
+# (hotswap-model v4 spec §9 / R3-I7). One source for the dm-verity ioctl machinery
+# (`setup_verity_device` + the new `dev_remove`) and the GPT-PARTUUID device discovery
+# (`resolve_partuuid` + the pure GPT read-side parse), shared by the boot-time initramfs-init and the
+# post-boot fb-weights swap sequencer. STANDALONE workspace (the quince shape): consumed by path from
+# the panic=abort standalones AND the root workspace without profile unification.
+[workspace]
+
+[package]
+name = "fb-verity-rt"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[dependencies]
+# The ioctl/mknod/nanosleep FFI. Same single-dep posture as the initramfs-init home it came from.
+libc = "0.2"
+
+[dev-dependencies]
+# Fixture dirs for the resolve_partuuid_at /sys/block + /dev scan tests (dev-only; never shipped).
+tempfile = "3"

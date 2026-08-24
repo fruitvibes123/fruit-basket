@@ -1,0 +1,17 @@
+[package]
+name = "fb-cert-check"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[[bin]]
+name = "fb-cert-check"
+path = "src/main.rs"
+
+[dependencies]
+# Parses the leaf notAfter in-Rust (the box ships NO openssl CLI — H-1).
+x509-parser = "0.16"
+
+[dev-dependencies]
+# The self_signed() test helper mints an ed25519 leaf. ring backend, no aws-lc.
+rcgen = { version = "0.13", default-features = false, features = ["pem", "crypto", "ring"] }

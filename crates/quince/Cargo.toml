@@ -1,0 +1,36 @@
+# quince — the box-side artifact-verify gate. A thin, verify-only wrapper over dragonfruit's clock-free
+# cascade: the ONE shared verify path for the installer's restore-from gate (C1) and the future fb-update
+# applier (C3), so the two cannot diverge in fail-closed posture. STANDALONE workspace (like its consumer
+# initramfs-init, which stands alone for panic=abort) so quince is never absorbed into the root unwind
+# workspace. CRUX: dragonfruit is taken verify-only; the `sign` feature is NEVER enabled in a box graph.
+[workspace]
+
+[package]
+name = "quince"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[dependencies]
+# Verify-only. `default-features = false` drops the `sign` feature/module. Path-dep across the
+# fruit-basket/seed-vault sibling repos, mirroring fb-oneshots' grape dep; dragonfruit-src is pinned.
+dragonfruit = { path = "../../../seed-vault/crates/dragonfruit", default-features = false }
+
+[features]
+# A POISONED feature name (break-B H-1 / spec §6f AC2). quince is verify-only and must NEVER sign:
+# declaring `sign` makes `cfg(feature = "sign")` an EXPECTED cfg (clippy-clean, no `unexpected_cfgs`),
+# while the `#[cfg(feature = "sign")] compile_error!` in lib.rs makes any attempt to ENABLE it a COMPILE
+# error. Empty (enables nothing). The cross-crate guard — the dragonfruit DEP never carrying `sign` — is
+# fb-manifest's feature-aware `box_graphs_never_request_the_dragonfruit_sign_feature`.
+sign = []
+
+[dev-dependencies]
+# Mint test bundles with the REAL signer (dev-only; `--edges dev` is NOT in the shipped allowlist, so this
+# does not violate the CRUX). Same source, with the sign feature, for test fixtures only. `sanctioned-signer`
+# opts this dev-only fixture-minting past dragonfruit's box-never-signs compile_error! guard;
+# it is a DEV-dep, so it never reaches the shipped/build box graph the crypto-sentry gate locks.
+dragonfruit = { path = "../../../seed-vault/crates/dragonfruit", features = ["sign", "sanctioned-signer"] }
+# Construct SigningKeys + hash artifacts in the fixtures (dragonfruit does NOT re-export these). Pins match
+# dragonfruit's own dev-deps so feature unification stays clean.
+ed25519-dalek = "2"
+sha2 = "0.10"

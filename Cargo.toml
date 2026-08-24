@@ -1,0 +1,13 @@
+[workspace]
+members = [
+    "crates/fb-acme",
+    "crates/fb-cert-check",
+    "crates/fb-backup",
+    "crates/fb-oneshots",
+    "crates/fb-manifest",
+]
+# box-init, initramfs-init, rambutan are STANDALONE workspaces (own [workspace]; box-init &
+# initramfs-init are panic=abort +crt-static musl PID-1/installer binaries; rambutan builds the
+# x86_64-unknown-uefi loader) — excluded; each gated via --manifest-path.
+exclude = ["crates/box-init", "crates/initramfs-init", "crates/rambutan"]
+resolver = "2"

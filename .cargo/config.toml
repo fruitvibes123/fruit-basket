@@ -1,0 +1,14 @@
+# The in-image musl binaries link DYNAMICALLY.
+#
+# GOTCHA: Rust's musl targets DEFAULT to `+crt-static` (fully static), so dynamic musl must be
+# requested EXPLICITLY with `-crt-static` (minus) — omitting the flag silently falls back to the
+# static default (it does NOT give dynamic). Dynamic is the standing decision (static "rejected as a
+# partial measure"; dynamic keeps Alpine a swappable provider), AND required mechanically by:
+#   - sqlx `sqlite-unbundled` (links the system libsqlite3.so), and
+#   - libsqlite3-sys's bindgen build script, which `dlopen`s libclang — a STATIC build-script binary
+#     can't ("Dynamic loading not supported"); only a dynamic one can.
+# The init commit (91add1e) carried `+crt-static`; corrected to `-crt-static` 2026-05-27. The
+# in-image .so deps are IMA-signed like any regular file (ima_evm.rs "sign every regular file"),
+# so the dynamic link surface is fully covered by appraisal.
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C", "target-feature=-crt-static"]

@@ -1,0 +1,55 @@
+# initramfs-init — the box PID-1 init.
+#
+# SEPARATE workspace (NOT a member of the root recipes workspace). Cargo profiles are
+# workspace-global, and the root workspace pins `[profile.release] panic = "unwind"` as a
+# LOAD-BEARING setting (image-decode `catch_unwind` panic-isolation). This PID-1
+# init requires `panic = "abort"` (a PID-1 panic must abort to the
+# kmsg+reboot handler; no unwinding machinery in a static musl init). The two settings cannot
+# coexist in one workspace, so this crate stands alone.
+#
+# Build: `cargo build --release --target x86_64-unknown-linux-musl` (static; `ldd` => not dynamic).
+[workspace]
+
+[package]
+name = "initramfs-init"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-2.0-only"
+
+[lib]
+name = "initramfs_init"
+path = "src/lib.rs"
+
+[[bin]]
+name = "initramfs-init"
+path = "src/main.rs"
+
+[dependencies]
+libc = "0.2"
+# The extracted runtime dm-verity + PARTUUID-discovery layer (hotswap v4 §9/R3-I7) — the init's
+# verity setup and the GPT read-side now live there, shared with the post-boot fb-weights sequencer.
+fb-verity-rt = { path = "../fb-verity-rt" }
+# §9.5 UEFI installer verify-before-write (SHA-256 of the box `.img` vs the loader-baked `fb.image-sha256`)
+# + C1 restore-from (hash the restore image in RAM for the quince verify, which takes a precomputed
+# artifact hash). `default-features = false` keeps the tree core-only (no std/alloc creep) — the SAME
+# audited dep + form the sibling rambutan loader uses for its initrd digest gate.
+sha2 = { version = "0.10", default-features = false }
+# The box-side artifact-verify gate (verify-only wrapper over dragonfruit's clock-free cascade). C1: the
+# restore-from image verify. dragonfruit is taken verify-only THROUGH quince — no `sign` in this graph.
+quince = { path = "../quince" }
+
+[dev-dependencies]
+# Mint operator-signed test bundles with the REAL signer (dev-only; `--edges dev` is OUT of the shipped
+# crypto-sentry allowlist, so this does NOT breach the box-never-signs CRUX). Same dragonfruit source.
+# `sanctioned-signer` opts this dev-only fixture-minting past dragonfruit's box-never-signs compile_error!
+# guard; a DEV-dep, so it never enters the shipped/build box graph crypto-sentry locks.
+dragonfruit = { path = "../../../seed-vault/crates/dragonfruit", features = ["sign", "sanctioned-signer"] }
+ed25519-dalek = "2"
+hex = "0.4"
+
+[profile.release]
+opt-level     = "z"
+lto           = "fat"
+codegen-units = 1
+strip         = true
+panic         = "abort" # PID-1 panic -> kmsg + libc::reboot, no unwinding.
