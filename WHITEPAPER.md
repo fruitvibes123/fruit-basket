@@ -1,5 +1,9 @@
 # Fruit Basket
 
+> A rendered version of this paper is published at
+> **<https://fruitvibes123.github.io/fruit-basket/>**.
+
+
 *Engineering white paper — revision 1.4, August 2026.*
 
 > [!WARNING]
@@ -219,19 +223,11 @@ image — and, when the artifact key set exists, detached signatures over all of
 
 | Artifact | Contents | Role |
 |---|---|---|
-| `fb-image-<label>.img` | raw concatenation of the pre-baked
-partition components (see below) | everything the installer writes to disk |
-| `….layout.toml` | byte offsets/sizes of the three components + firmware
-tag | parse-structure metadata only — *not* a trust anchor; the signature covers the
-image bytes, so a tampered layout produces a verification failure, not a bypass |
-| `….sha256` | SHA-256 sidecars (one per shipped artifact) | transfer-corruption check on the staging target — integrity against accident, not against an
-adversary |
-| `….vmlinuz`, `….initramfs` | the kernel and initramfs as
-standalone files | loaded locally by the deployment tool (via `kexec`) so the
-installer that runs is always the operator's copy, never bytes fetched from the target |
-| `….img.sig`, `….vmlinuz.sig`, `….initramfs.sig` | detached ed25519 signatures, emitted whenever the operator's artifact-signing key set exists
-(§11.7) | operator-side authenticity over every shipped artifact; the same scheme's
-operator signature anchors restore-archive verification on the box (§9.5) |
+| `fb-image-<label>.img` | raw concatenation of the pre-baked partition components (see below) | everything the installer writes to disk |
+| `….layout.toml` | byte offsets/sizes of the three components + firmware tag | parse-structure metadata only — *not* a trust anchor; the signature covers the image bytes, so a tampered layout produces a verification failure, not a bypass |
+| `….sha256` | SHA-256 sidecars (one per shipped artifact) | transfer-corruption check on the staging target — integrity against accident, not against an adversary |
+| `….vmlinuz`, `….initramfs` | the kernel and initramfs as standalone files | loaded locally by the deployment tool (via `kexec`) so the installer that runs is always the operator's copy, never bytes fetched from the target |
+| `….img.sig`, `….vmlinuz.sig`, `….initramfs.sig` | detached ed25519 signatures, emitted whenever the operator's artifact-signing key set exists (§11.7) | operator-side authenticity over every shipped artifact; the same scheme's operator signature anchors restore-archive verification on the box (§9.5) |
 
 Table 1. The build's output artifacts — the disk
 image, its layout sidecar, the SHA-256 sidecars, the standalone kernel/initramfs, and the ed25519
@@ -296,33 +292,18 @@ deliberately absent), `haproxy`, `nftables`, `s6` +
 
 | Component | Kind | Purpose |
 |---|---|---|
-| `initramfs-init` | static Rust binary, PID 1 (early) | verified-boot
-sequence; doubles as the installer when invoked with `fb.mode=installer` (§5, §10) |
-| `box-init` | Rust binary, PID 1 (runtime) | bootstrap one-shots,
-network bring-up, services-vs-rescue branch, supervision hand-off (§7) |
-| `app` | Rust binary, uid 100 | the payload web service (out of scope
-for this paper) |
-| `fb-acme` | Rust binary, uid 101 | ACME HTTP-01 challenge server +
-certificate renewal client (§8.4) |
-| `fb-backup`, `fb-cert-check` | Rust binaries | daily
-snapshot; daily certificate-expiry alarm (§8.5, §9.4) |
-| `fb-oneshots` | Rust binary | the bootstrap one-shot toolbox `box-init`
-drives (hostname, first-boot CA and placeholder-certificate bootstrap, key staging, certificate
-reload) |
-| `fb-update`, `fb-mark-good` | Rust binaries | the box-side A/B OS-update
-engine: manifest-verified update, two anti-rollback floors, inactive-slot write, boot-once
-probation, explicit acceptance (§13.2) |
+| `initramfs-init` | static Rust binary, PID 1 (early) | verified-boot sequence; doubles as the installer when invoked with `fb.mode=installer` (§5, §10) |
+| `box-init` | Rust binary, PID 1 (runtime) | bootstrap one-shots, network bring-up, services-vs-rescue branch, supervision hand-off (§7) |
+| `app` | Rust binary, uid 100 | the payload web service (out of scope for this paper) |
+| `fb-acme` | Rust binary, uid 101 | ACME HTTP-01 challenge server + certificate renewal client (§8.4) |
+| `fb-backup`, `fb-cert-check` | Rust binaries | daily snapshot; daily certificate-expiry alarm (§8.5, §9.4) |
+| `fb-oneshots` | Rust binary | the bootstrap one-shot toolbox `box-init` drives (hostname, first-boot CA and placeholder-certificate bootstrap, key staging, certificate reload) |
+| `fb-update`, `fb-mark-good` | Rust binaries | the box-side A/B OS-update engine: manifest-verified update, two anti-rollback floors, inactive-slot write, boot-once probation, explicit acceptance (§13.2) |
 | `fb-weights` | Rust binary | sealed-data-volume tooling (§7.5) |
-| *the factory* | Rust CLI, operator host only | the build/deploy/verify
-tool — a separate repository that never ships on the box: it bakes the image from the pinned
-inputs, runs the deployment ceremonies, and owns the pin-store tooling (§10, §11) |
-| *the service manifest* | TOML + a Rust schema crate | the validated
-declaration of the supervised topology — services, run privileges, restart caps, boot hooks,
-and confined-tenant resource domains (§7.3, §7.5); itself a pinned, hash-verified build input |
-| `syslinux-install` | Rust crate (build-time) | privilege-free,
-deterministic bootloader installation into the baked boot filesystem (§11.4) |
-| *host-key derivation* | a sibling library crate | HKDF derivation of SSH
-host keys and the kernel build seed (§9.3, §11.5) |
+| *the factory* | Rust CLI, operator host only | the build/deploy/verify tool — a separate repository that never ships on the box: it bakes the image from the pinned inputs, runs the deployment ceremonies, and owns the pin-store tooling (§10, §11) |
+| *the service manifest* | TOML + a Rust schema crate | the validated declaration of the supervised topology — services, run privileges, restart caps, boot hooks, and confined-tenant resource domains (§7.3, §7.5); itself a pinned, hash-verified build input |
+| `syslinux-install` | Rust crate (build-time) | privilege-free, deterministic bootloader installation into the baked boot filesystem (§11.4) |
+| *host-key derivation* | a sibling library crate | HKDF derivation of SSH host keys and the kernel build seed (§9.3, §11.5) |
 
 Table 2. The first-party Rust components — two init
 systems, the payload and edge services, the operator CLI, and the build-time crates — that replace
@@ -357,32 +338,14 @@ Appendix A.
 
 | Property | Mechanism | Note |
 |---|---|---|
-| No loadable modules | `CONFIG_MODULES=n` | the classic post-exploit
-kernel-implant vector does not exist; everything needed is built in |
-| Lockdown, integrity mode, always | `SECURITY_LOCKDOWN_LSM(_EARLY)` +
-`LOCK_DOWN_KERNEL_FORCE_INTEGRITY` | compiled-in force — not dependent on a
-cmdline parameter surviving; `lockdown=integrity` is still passed on the cmdline as
-a backstop. Blocks `/dev/mem`-class access and unsigned runtime
-`kexec`, among others |
-| Code-signing enforcement | `IMA` + `IMA_APPRAISE` +
-`REQUIRE_POLICY_SIGS` + `EVM` | §6 — the core integrity mechanism |
-| Keyring trust restriction | `INTEGRITY_TRUSTED_KEYRING` chain | installs `restrict_link_by_digsig` on the `.ima`/`.evm`
-keyrings: only certificates signed by a key already in the kernel's built-in trusted keyring (the
-operator CA, embedded at build) can ever be loaded |
-| ptrace restriction | Yama, `ptrace_scope=2` | set by init before any
-service starts; admin-only ptrace |
-| No BPF JIT | `CONFIG_BPF_JIT=n` | removes the JIT-spray surface;
-nothing on the box loads BPF programs |
-| Reproducible build | `GCC_PLUGIN_LATENT_ENTROPY` + pinned deterministic
-seed; `RANDSTRUCT_NONE` | the only build-time randomness source is driven by an
-HKDF-derived seed (§11.5), so the hardening plugin stays on *and* the kernel stays
-byte-reproducible; structure-layout randomisation is off because its seed cannot be externally
-pinned |
-| IPv6 compiled in, refused at runtime | `CONFIG_IPV6=y` +
-`accept_ra=0` | deliberate: the firewall's unified inet table carries ICMPv6
-rules that must load, so compiling v6 out would break the firewall load (which is
-fail-closed-to-reboot); autoconfiguration is refused instead. Managed IPv6 service is a defined
-but unbuilt seam |
+| No loadable modules | `CONFIG_MODULES=n` | the classic post-exploit kernel-implant vector does not exist; everything needed is built in |
+| Lockdown, integrity mode, always | `SECURITY_LOCKDOWN_LSM(_EARLY)` + `LOCK_DOWN_KERNEL_FORCE_INTEGRITY` | compiled-in force — not dependent on a cmdline parameter surviving; `lockdown=integrity` is still passed on the cmdline as a backstop. Blocks `/dev/mem`-class access and unsigned runtime `kexec`, among others |
+| Code-signing enforcement | `IMA` + `IMA_APPRAISE` + `REQUIRE_POLICY_SIGS` + `EVM` | §6 — the core integrity mechanism |
+| Keyring trust restriction | `INTEGRITY_TRUSTED_KEYRING` chain | installs `restrict_link_by_digsig` on the `.ima`/`.evm` keyrings: only certificates signed by a key already in the kernel's built-in trusted keyring (the operator CA, embedded at build) can ever be loaded |
+| ptrace restriction | Yama, `ptrace_scope=2` | set by init before any service starts; admin-only ptrace |
+| No BPF JIT | `CONFIG_BPF_JIT=n` | removes the JIT-spray surface; nothing on the box loads BPF programs |
+| Reproducible build | `GCC_PLUGIN_LATENT_ENTROPY` + pinned deterministic seed; `RANDSTRUCT_NONE` | the only build-time randomness source is driven by an HKDF-derived seed (§11.5), so the hardening plugin stays on *and* the kernel stays byte-reproducible; structure-layout randomisation is off because its seed cannot be externally pinned |
+| IPv6 compiled in, refused at runtime | `CONFIG_IPV6=y` + `accept_ra=0` | deliberate: the firewall's unified inet table carries ICMPv6 rules that must load, so compiling v6 out would break the firewall load (which is fail-closed-to-reboot); autoconfiguration is refused instead. Managed IPv6 service is a defined but unbuilt seam |
 
 Table 3. The kernel's hardening posture — each
 property, the config symbol or mechanism that enforces it, and why it is pinned.
@@ -493,18 +456,10 @@ kernel rather than by procedure.
 
 | Layer | Covers | Failure behaviour |
 |---|---|---|
-| dm-verity | every 4 KiB block of the root filesystem — and of any sealed data
-volume (§7.5) — verified against a SHA-256 Merkle tree whose root is on the kernel command
-line | rootfs: reboot on first corrupt block (`restart_on_corruption`); data
-volume: EIO to the reader, box stays up (§5.2) |
-| IMA appraisal | every `execve()` and every executable `mmap()`
-of a root-owned file, plus the policy file itself | `EACCES` — unsigned code does
-not run |
-| EVM (portable signatures) | the security xattrs and file metadata (mode, uid/gid)
-that IMA relies on | appraisal failure — a re-signed or permission-tampered inode is
-refused |
-| Mount policy + lockdown + no-modules | everything writable; the kernel itself | `noexec` on all writable mounts; no module loading; lockdown integrity blocks
-kernel-image modification paths at runtime |
+| dm-verity | every 4 KiB block of the root filesystem — and of any sealed data volume (§7.5) — verified against a SHA-256 Merkle tree whose root is on the kernel command line | rootfs: reboot on first corrupt block (`restart_on_corruption`); data volume: EIO to the reader, box stays up (§5.2) |
+| IMA appraisal | every `execve()` and every executable `mmap()` of a root-owned file, plus the policy file itself | `EACCES` — unsigned code does not run |
+| EVM (portable signatures) | the security xattrs and file metadata (mode, uid/gid) that IMA relies on | appraisal failure — a re-signed or permission-tampered inode is refused |
+| Mount policy + lockdown + no-modules | everything writable; the kernel itself | `noexec` on all writable mounts; no module loading; lockdown integrity blocks kernel-image modification paths at runtime |
 
 Table 4. The four integrity layers — what each
 covers and how each fails closed — that together enforce "only operator-signed code runs, from a
@@ -679,21 +634,13 @@ is SIGKILLed and handled like a failure, so PID 1 reaches *either* a running sup
 
 | # | One-shot | What it does | Bound | On failure |
 |---|---|---|---|---|
-| 1 | `nftables-load` | load the firewall ruleset | 30 s | **reboot** — the only reboot-class step: a box whose firewall did not load must
-not expose *anything*, rescue included (an unloaded ruleset is kernel default-accept) |
-| 2 | `prepare-persist` | offline crash recovery + first-boot grow of
-the persist filesystem (§9.2) — runs against the *unmounted* device by construction | 300 s | rescue |
-| 3–4 | `mount-persist(-check)` | mount `/persist`; verify
-it is a mountpoint | 30 s | rescue |
+| 1 | `nftables-load` | load the firewall ruleset | 30 s | **reboot** — the only reboot-class step: a box whose firewall did not load must not expose *anything*, rescue included (an unloaded ruleset is kernel default-accept) |
+| 2 | `prepare-persist` | offline crash recovery + first-boot grow of the persist filesystem (§9.2) — runs against the *unmounted* device by construction | 300 s | rescue |
+| 3–4 | `mount-persist(-check)` | mount `/persist`; verify it is a mountpoint | 30 s | rescue |
 | 5 | `setup-dirs` | create/chown the per-service data directories | 30 s | rescue |
-| 6 | `seed-update-floors` | seed the A/B update engine's anti-rollback
-floors from the running image (§13.2) | 30 s | rescue |
-| 7 | `services-keys-stage` | derive the SSH host key (§9.3) onto the
-writable tmpfs path the SSH daemon reads | 30 s | rescue |
-| — | *manifest boot hooks* | workload-declared steps merged into the same
-ordered, bounded sequence; in the reference manifest: hostname from the baked domain file,
-first-boot generation of the on-box client-device CA, and the self-signed placeholder
-certificate that lets the edge proxy start before the first ACME order completes | per hook | per hook (rescue-classed in the reference manifest) |
+| 6 | `seed-update-floors` | seed the A/B update engine's anti-rollback floors from the running image (§13.2) | 30 s | rescue |
+| 7 | `services-keys-stage` | derive the SSH host key (§9.3) onto the writable tmpfs path the SSH daemon reads | 30 s | rescue |
+| — | *manifest boot hooks* | workload-declared steps merged into the same ordered, bounded sequence; in the reference manifest: hostname from the baked domain file, first-boot generation of the on-box client-device CA, and the self-signed placeholder certificate that lets the edge proxy start before the first ACME order completes | per hook | per hook (rescue-classed in the reference manifest) |
 
 Table 5. The fixed bootstrap one-shot sequence
 `box-init` runs before supervision — each step's time bound and whether its failure
@@ -718,22 +665,15 @@ manifest supervises:
 
 | Service | uid | Purpose |
 |---|---|---|
-| `haproxy` | master root / workers 104 | TLS edge (§8.3); master-worker
-mode for hitless certificate reload |
-| `app` | 100 | the payload service, loopback :8000 — the primary
-threat-model boundary; fully privilege-dropped |
-| `fb-acme-serve` | 101 | ACME HTTP-01 challenge responder, loopback
-:8081 |
+| `haproxy` | master root / workers 104 | TLS edge (§8.3); master-worker mode for hitless certificate reload |
+| `app` | 100 | the payload service, loopback :8000 — the primary threat-model boundary; fully privilege-dropped |
+| `fb-acme-serve` | 101 | ACME HTTP-01 challenge responder, loopback :8081 |
 | `fb-acme-renew` | 101 | certificate order/renewal loop (§8.4) |
 | `dropbear` | root | operator SSH; public-key-only (§8.7) |
-| `ntpd` | root | busybox NTP, best-effort wall-clock against the
-provider's first-party server (§8.6) |
-| `fb-backup` | root | daily snapshot into `/persist`
-(§9.4) |
-| `fb-cert-check` | root | daily in-process X.509 parse of the live
-certificate; alarms ahead of expiry |
-| `rescue-dropbear` | root | supervised *only* on the rescue
-branch; recovery-key SSH with a diagnosis banner |
+| `ntpd` | root | busybox NTP, best-effort wall-clock against the provider's first-party server (§8.6) |
+| `fb-backup` | root | daily snapshot into `/persist` (§9.4) |
+| `fb-cert-check` | root | daily in-process X.509 parse of the live certificate; alarms ahead of expiry |
+| `rescue-dropbear` | root | supervised *only* on the rescue branch; recovery-key SSH with a diagnosis banner |
 
 Table 6. The services `s6-svscan`
 supervises after bootstrap, the uid each runs as, and the single rescue-only listener.
@@ -841,11 +781,9 @@ One nftables inet table, generated at build, no runtime mutation surface:
 
 | Chain | Policy | Accepts |
 |---|---|---|
-| input | **drop** | loopback; established/related; ICMP/ICMPv6;
-TCP 22 (SSH), 80 (ACME challenge only, §8.3), 443 (TLS) |
+| input | **drop** | loopback; established/related; ICMP/ICMPv6; TCP 22 (SSH), 80 (ACME challenge only, §8.3), 443 (TLS) |
 | forward | **drop** | — |
-| output | **drop** | loopback; established/related; DNS (53);
-NTP (123/udp); TCP 80 + 443 (ACME + OCSP egress) |
+| output | **drop** | loopback; established/related; DNS (53); NTP (123/udp); TCP 80 + 443 (ACME + OCSP egress) |
 
 Table 7. The single nftables inet table — the
 default-drop policy and the exact accepts on each of the input, forward, and output chains.
@@ -1094,30 +1032,12 @@ reproducibility is the operator's only practical lever to audit their own supply
 
 | Input | Pin | Verification |
 |---|---|---|
-| Kernel source | version + tarball SHA-256 in the central manifest | checked
-against kernel.org's PGP-signed sums (a vendored, policed keyring) at pin time; **re-verified
-at consumption** — the bake re-hashes the staged tarball and extracts a fresh per-build
-tree, so the staging step is never trusted |
-| Bootloader source | syslinux 6.04-pre1 tarball SHA-256 (+ four distribution patches
-committed in-tree) | hash-verified at consumption, same discipline; built from source
-(§11.4) |
-| Rust toolchain + build container | version + container image digest | the
-toolchain file and container `FROM` line are *generated* from the manifest; a
-drift test fails the build if they diverge; the container fetches each toolchain component by a
-manifest-authenticated URL anchored on the Rust release signing key (a second vendored keyring,
-policed like the first) and hash-checks it before install |
-| First-party binaries + the service manifest | every staged binary and the topology
-manifest are *published artifacts*: built in the pinned container, published by a narrow
-publisher that ELF/linkage-asserts each one, recorded in the owning repository, and pinned by
-SHA-256 in the consuming manifest | the bake *fetches* them from a content-addressed
-store and verifies each against its pin; it compiles none of them, so what ships is exactly
-what was reviewed at the pin-bump; provenance (consume-pin ↔ publisher record) is a standing
-verify check |
-| Userspace packages | a hand-maintained intent list resolved into a generated lock of
-the full transitive closure — package versions + SHA-256s | apk signatures verified against
-trusted keys committed in-tree; packages extracted, never installed |
-| Download endpoints | TLS certificate fingerprints pinned in-tree | fetches
-refuse on fingerprint mismatch |
+| Kernel source | version + tarball SHA-256 in the central manifest | checked against kernel.org's PGP-signed sums (a vendored, policed keyring) at pin time; **re-verified at consumption** — the bake re-hashes the staged tarball and extracts a fresh per-build tree, so the staging step is never trusted |
+| Bootloader source | syslinux 6.04-pre1 tarball SHA-256 (+ four distribution patches committed in-tree) | hash-verified at consumption, same discipline; built from source (§11.4) |
+| Rust toolchain + build container | version + container image digest | the toolchain file and container `FROM` line are *generated* from the manifest; a drift test fails the build if they diverge; the container fetches each toolchain component by a manifest-authenticated URL anchored on the Rust release signing key (a second vendored keyring, policed like the first) and hash-checks it before install |
+| First-party binaries + the service manifest | every staged binary and the topology manifest are *published artifacts*: built in the pinned container, published by a narrow publisher that ELF/linkage-asserts each one, recorded in the owning repository, and pinned by SHA-256 in the consuming manifest | the bake *fetches* them from a content-addressed store and verifies each against its pin; it compiles none of them, so what ships is exactly what was reviewed at the pin-bump; provenance (consume-pin ↔ publisher record) is a standing verify check |
+| Userspace packages | a hand-maintained intent list resolved into a generated lock of the full transitive closure — package versions + SHA-256s | apk signatures verified against trusted keys committed in-tree; packages extracted, never installed |
+| Download endpoints | TLS certificate fingerprints pinned in-tree | fetches refuse on fingerprint mismatch |
 
 Table 8. Every pinned build input — kernel,
 bootloader, toolchain and container, the first-party artifact set, userspace packages, and
@@ -1278,19 +1198,13 @@ trail stays with the canonical source.
 
 | Action | Mechanism |
 |---|---|
-| Key bootstrap (once) | the factory's `generate-keys` — the seven-file
-ceremony of §6.4 (+ the ed25519 artifact cascade) |
-| Build | the factory's `build` (firmware target selectable — SeaBIOS or
-UEFI Secure Boot) → the artifact triple + boot artifacts, reproducibly |
-| Pin lifecycle | the factory's `verify` / `upgrade` / drift
-report — staged, verified one-command re-derivations of any pinned input (§11.2) |
+| Key bootstrap (once) | the factory's `generate-keys` — the seven-file ceremony of §6.4 (+ the ed25519 artifact cascade) |
+| Build | the factory's `build` (firmware target selectable — SeaBIOS or UEFI Secure Boot) → the artifact triple + boot artifacts, reproducibly |
+| Pin lifecycle | the factory's `verify` / `upgrade` / drift report — staged, verified one-command re-derivations of any pinned input (§11.2) |
 | Pre-deploy check | the factory's `dryrun` + the boot gate |
-| Install | the factory's `prod <target>` — the kexec take-over
-ceremony of §10.2 |
-| Host-identity precompute | the factory's `derive-rescue-host-keys --image …` —
-offline known_hosts pinning (§9.3) |
-| Day-2 access | SSH as root (public key), read-mostly: inspect logs/state under
-`/persist` and `dmesg`; pull backups |
+| Install | the factory's `prod <target>` — the kexec take-over ceremony of §10.2 |
+| Host-identity precompute | the factory's `derive-rescue-host-keys --image …` — offline known_hosts pinning (§9.3) |
+| Day-2 access | SSH as root (public key), read-mostly: inspect logs/state under `/persist` and `dmesg`; pull backups |
 
 Table 9. The complete operator action surface — key
 bootstrap, build, pin lifecycle, pre-deploy check, install, host-identity precompute, and
@@ -1336,44 +1250,13 @@ provide. These are the named, accepted residuals at the time of writing:
 
 | Residual | Status and reasoning |
 |---|---|
-| No root of trust below the kernel on the reference substrate | The boot partition
-(bootloader, kernel, initramfs, command line — including the verity root hash) is mutable disk
-read by provider firmware on a provider hypervisor. Accepted permanently *for this substrate
-class* (§2.2): the box is sacrificial, and spending against a hypervisor-level adversary
-hardens the wrong thing. The structural close is now built — a custom ~11 KB UEFI Secure Boot loader
-(the companion *Rambutan* paper): the operator's enrolled keys verify the loader, which in turn
-re-verifies a db-signed kernel and digest-checks the initramfs (a custom loader, *not* a UKI).
-It rides a GPT/ESP layout, and the operator elects it where the substrate permits key enrolment;
-production remains SeaBIOS on the BIOS-only reference host. Which root-of-trust floor a deployment
-gets is the operator's choice within what the substrate allows, not a fixed property of the design.
-(Vendor-anchored Secure Boot on rented hosts was evaluated and rejected as a sovereignty downgrade:
-it swaps the operator's root for a vendor's and enlarges the firmware TCB.) |
-| Install-window TCB | The greenfield install trusts the provider's staging OS while
-it stages and kexecs the installer (§10.2). Documented, bounded (one window, operator-attended),
-closed by the same UEFI branch. |
-| Install-time image-signature verify not yet wired | The ed25519 scheme is shipped: it verifies its first hard consumer today — restore archives are
-checked before any destructive write (§9.5) — and the image's own `.sig` sidecars are emitted at build. The one
-remaining verify site is the installer checking the image's signature at install time; it rides
-the self-update ceremony (§13.2), whose clock-free verify is designed. Until then the image's
-integrity in transit rests on the operator-attended ceremony + checksums — adequate against
-accident, not against a compromised staging host (which is already the named residual
-above). |
-| Egress filtering is a speed bump | Stated in §8.2; exfiltration over permitted 443
-remains possible by design. |
-| Provisioning self-healing | A crash in the first seconds of first-boot provisioning
-can leave zero-byte secret files that crash-loop the affected services (operator SSH remains up;
-nothing is bricked). The robust fix — self-healing regeneration with guards against re-minting an
-in-use CA — is specified and scheduled. |
-| Single-box scope | No clustering, no HA, no horizontal anything. One box fronts one
-payload application by design, beside its own supporting services (§7.3): the manifest's edge
-schema binds a single application backend plus the ACME path, so a second exposed application is
-an edge-schema extension — an image change like any other — while additional non-listening
-workloads are the confined co-tenant class (§7.5). Availability is traded for a much smaller
-operational surface, and recovery is reinstall + restore. |
-| First-boot ACME issuance timing | The first production deployment has been live since
-July 2026 and issuance runs against the production CA. An issuance miss on the very first boot
-of a greenfield install is a named open item under diagnosis; the self-signed bootstrap keeps
-the edge serving until the first completed order, and steady-state renewal is unaffected. |
+| No root of trust below the kernel on the reference substrate | The boot partition (bootloader, kernel, initramfs, command line — including the verity root hash) is mutable disk read by provider firmware on a provider hypervisor. Accepted permanently *for this substrate class* (§2.2): the box is sacrificial, and spending against a hypervisor-level adversary hardens the wrong thing. The structural close is now built — a custom ~11 KB UEFI Secure Boot loader (the companion *Rambutan* paper): the operator's enrolled keys verify the loader, which in turn re-verifies a db-signed kernel and digest-checks the initramfs (a custom loader, *not* a UKI). It rides a GPT/ESP layout, and the operator elects it where the substrate permits key enrolment; production remains SeaBIOS on the BIOS-only reference host. Which root-of-trust floor a deployment gets is the operator's choice within what the substrate allows, not a fixed property of the design. (Vendor-anchored Secure Boot on rented hosts was evaluated and rejected as a sovereignty downgrade: it swaps the operator's root for a vendor's and enlarges the firmware TCB.) |
+| Install-window TCB | The greenfield install trusts the provider's staging OS while it stages and kexecs the installer (§10.2). Documented, bounded (one window, operator-attended), closed by the same UEFI branch. |
+| Install-time image-signature verify not yet wired | The ed25519 scheme is shipped: it verifies its first hard consumer today — restore archives are checked before any destructive write (§9.5) — and the image's own `.sig` sidecars are emitted at build. The one remaining verify site is the installer checking the image's signature at install time; it rides the self-update ceremony (§13.2), whose clock-free verify is designed. Until then the image's integrity in transit rests on the operator-attended ceremony + checksums — adequate against accident, not against a compromised staging host (which is already the named residual above). |
+| Egress filtering is a speed bump | Stated in §8.2; exfiltration over permitted 443 remains possible by design. |
+| Provisioning self-healing | A crash in the first seconds of first-boot provisioning can leave zero-byte secret files that crash-loop the affected services (operator SSH remains up; nothing is bricked). The robust fix — self-healing regeneration with guards against re-minting an in-use CA — is specified and scheduled. |
+| Single-box scope | No clustering, no HA, no horizontal anything. One box fronts one payload application by design, beside its own supporting services (§7.3): the manifest's edge schema binds a single application backend plus the ACME path, so a second exposed application is an edge-schema extension — an image change like any other — while additional non-listening workloads are the confined co-tenant class (§7.5). Availability is traded for a much smaller operational surface, and recovery is reinstall + restore. |
+| First-boot ACME issuance timing | The first production deployment has been live since July 2026 and issuance runs against the production CA. An issuance miss on the very first boot of a greenfield install is a named open item under diagnosis; the self-signed bootstrap keeps the edge serving until the first completed order, and steady-state renewal is unaffected. |
 
 Table 10. The named, accepted limitations at the time
 of writing — each with its status and the reasoning or the planned structural close.
@@ -1489,36 +1372,20 @@ ro lockdown=integrity ima_appraise=enforce sysctl.kernel.yama.ptrace_scope=2
 
 ## Appendix C — glossary
 
-| **dm-verity** | kernel block-integrity target: reads are verified
-against a Merkle tree rooted in a hash supplied at device creation. |
+| **dm-verity** | kernel block-integrity target: reads are verified against a Merkle tree rooted in a hash supplied at device creation. |
 |---|---|
-| **IMA / EVM** | Integrity Measurement Architecture — kernel appraisal
-of file signatures on execution/mapping; EVM protects the security xattrs and metadata those
-signatures live in. |
-| **appraisal** | IMA's enforcement mode: the operation (exec, mmap) is
-refused unless the file's signature verifies against a trusted key. |
-| **portable EVM signature** | an EVM signature excluding inode-specific
-fields (inode number, generation, filesystem UUID), valid wherever the file lands — the
-immutable-image-friendly variant. |
-| **extlinux / syslinux** | a small BIOS bootloader family for ext
-filesystems; stage-1 lives in the MBR, stage-2 in the filesystem with a patched-in map of its own
-sectors. |
-| **kexec** | booting a new kernel from a running one without firmware
-involvement — used here once, to hand a provider's stock OS over to the installer. |
-| **one-shot** | a run-once bootstrap step, as opposed to a supervised
-long-running service. |
-| **scan directory** | the directory of service definitions an s6
-supervisor watches. |
-| **A/B slots** | two equal root-image partitions enabling
-update-then-flip with rollback. |
-| **HKDF** | HMAC-based key derivation (RFC 5869): expands a secret into
-purpose-separated keys via salts/info labels. |
-| **RFC 6979** | deterministic ECDSA nonces — same key + message always
-produce the same signature; removes signing-time randomness. |
-| **TOFU** | trust-on-first-use; here eliminated for SSH by deriving host
-keys the operator can precompute offline. |
-| **TCB** | trusted computing base — everything whose failure defeats the
-security claims. |
+| **IMA / EVM** | Integrity Measurement Architecture — kernel appraisal of file signatures on execution/mapping; EVM protects the security xattrs and metadata those signatures live in. |
+| **appraisal** | IMA's enforcement mode: the operation (exec, mmap) is refused unless the file's signature verifies against a trusted key. |
+| **portable EVM signature** | an EVM signature excluding inode-specific fields (inode number, generation, filesystem UUID), valid wherever the file lands — the immutable-image-friendly variant. |
+| **extlinux / syslinux** | a small BIOS bootloader family for ext filesystems; stage-1 lives in the MBR, stage-2 in the filesystem with a patched-in map of its own sectors. |
+| **kexec** | booting a new kernel from a running one without firmware involvement — used here once, to hand a provider's stock OS over to the installer. |
+| **one-shot** | a run-once bootstrap step, as opposed to a supervised long-running service. |
+| **scan directory** | the directory of service definitions an s6 supervisor watches. |
+| **A/B slots** | two equal root-image partitions enabling update-then-flip with rollback. |
+| **HKDF** | HMAC-based key derivation (RFC 5869): expands a secret into purpose-separated keys via salts/info labels. |
+| **RFC 6979** | deterministic ECDSA nonces — same key + message always produce the same signature; removes signing-time randomness. |
+| **TOFU** | trust-on-first-use; here eliminated for SSH by deriving host keys the operator can precompute offline. |
+| **TCB** | trusted computing base — everything whose failure defeats the security claims. |
 
 Table 11. Glossary of terms used in this paper.
 

@@ -26,7 +26,8 @@ system that runs, and the kernel enforces that equivalence continuously:
 
 The full design — threat model, boot chain, integrity architecture, init and supervision,
 networking, persistence and recovery, the reproducible build pipeline, and the accepted
-limitations — is in **[WHITEPAPER.md](WHITEPAPER.md)**.
+limitations — is in **[WHITEPAPER.md](WHITEPAPER.md)**; a rendered version is published at
+**<https://fruitvibes123.github.io/fruit-basket/>**.
 
 ## Components
 
@@ -47,11 +48,15 @@ limitations — is in **[WHITEPAPER.md](WHITEPAPER.md)**.
 This is the published export of a private canonical repository, produced by an
 equivalence-gated release tool:
 
-- **Complete for reading, not for standalone building.** Several manifests carry path
-  dependencies on an unpublished sibling library repository, and the build/deploy factory, the
-  payload application, and the signing pipeline live in further unpublished repositories, so
-  `cargo build` will not resolve here as checked out. The release gate proves that this exact
-  source builds the shipped binaries inside the pinned build container with the sibling present.
+- **Buildable beside its published siblings.** Several manifests carry path dependencies on the
+  sibling library repository [seed-vault](https://github.com/fruitvibes123/seed-vault) — clone it
+  beside this checkout and the workspaces resolve. The build/deploy factory that turns this
+  source into a bootable image is published as
+  [orchard](https://github.com/fruitvibes123/orchard); its guide is the end-to-end walkthrough
+  (container, keys, artifact store, bake, boot). The payload application and the signing pipeline
+  remain unpublished — bring your own application per the `fb-manifest` service-manifest schema.
+  The release gate proves that this exact source builds the shipped binaries inside the pinned
+  build container with the sibling present.
 - **Working comments are padded out, not deleted.** Internal non-doc comments are replaced with
   same-length whitespace so the published source builds byte-identical binaries; runs of
   trailing spaces and blank-looking lines are that padding. Doc comments publish as written.
