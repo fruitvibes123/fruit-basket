@@ -146,8 +146,8 @@
   kernel-enforced code signing (IMA/EVM), two purpose-built Rust init systems, and a
   byte-reproducible build pipeline, with no configuration surface.</p>
   <div class="meta">
-    <span>REV 1.3 — July 2026</span>
-    <span>STATUS: install, runtime, restore verify &amp; the A/B update engine shipped; self-update ceremony in progress</span>
+    <span>REV 1.4 — August 2026</span>
+    <span>STATUS: install, runtime, restore verify &amp; the A/B update engine shipped and live-proven; box-pulled self-update pending</span>
     <span>AUDIENCE: systems engineers &amp; security reviewers</span>
   </div>
 </header>
@@ -1219,7 +1219,7 @@ runtime layers).</p>
 <p>The installer is the same signed <code>initramfs-init</code> binary, dispatched by
 <code>fb.mode=installer</code> on its command line: in the window where the
 appraisal chain is not yet armed, it <strong>executes nothing and formats nothing</strong>. There
-is no <code>mkfs</code>, no bootloader installer, no helper process on the target — every shipped
+is no <code>mkfs</code>, no bootloader installer, no helper process on the target. Every shipped
 filesystem was baked in the controlled build environment, and the installer's entire job is raw
 block I/O: create a partition table, copy byte ranges, reboot. The firmware target is an
 operator choice fixed at build time. This section follows the reference SeaBIOS/MBR path; the
@@ -1235,16 +1235,16 @@ UEFI/GPT alternative is booted by the <em>Rambutan</em> loader (§14).</p>
   <em>if restoring data, it verifies the backup archive's signature now</em>. Any failure to this
   point aborts with zero bytes written to the target layout. Every subsequent copy streams
   source→disk in fixed 8 MiB chunks, so install-time memory is O(chunk), not O(image).</li>
-  <li>Write the partition table — MBR with the 440-byte boot-code region left zero, or GPT with
+  <li>Write the partition table: MBR with the 440-byte boot-code region left zero, or GPT with
   the protective stage untouched. The disk now has the right geometry and is deliberately
   <em>not bootable</em>.</li>
   <li>Copy rootfs → slot A; persist skeleton → the persist partition; zero slot B; any sealed
   data component → its partition; boot component → the boot partition.</li>
-  <li>Write the boot-enabling bytes <strong>last</strong> — the 440-byte stage-1 on the BIOS
-  arms — then reboot.</li>
+  <li>Write the boot-enabling bytes <strong>last</strong> (the 440-byte stage-1 on the BIOS
+  arms), then reboot.</li>
 </ol>
 <p>A failure anywhere in step 3 leaves a cleanly unbootable disk the operator re-runs the install
-against — never a bootable-but-half-written system. Before any write, the layout is validated
+against, never a bootable-but-half-written system. Before any write, the layout is validated
 exhaustively: component byte-ranges must lie inside the image, each component must fit its fixed
 partition, the disk must be neither too small nor beyond MBR addressing, and source paths/devices
 must match the whitelist grammar. In code, the property is structural: the write phase requires a
@@ -1253,25 +1253,29 @@ is enforced by the compiler, not by review.</p>
 
 <h3>10.2 Greenfield deployment by kexec take-over</h3>
 <p>Rented VPSes rarely allow custom images, but they all boot a stock Linux. Deployment uses that:
-the operator CLI connects to the provider's stock OS over SSH, stages the image triple, verifies
-each staged file's SHA-256 on the target, discovers the root disk, loads the operator's
-<em>local</em> kernel + initramfs via <code>kexec</code> with an installer-mode command line
-(carrying the same defence triple as the runtime), and hands over. The machine warm-boots straight
-into the installer with no provider imaging involved; on completion it reboots into the immutable
-runtime, and the CLI reconnects against the precomputed host key and verifies the box's identity
-end-to-end.</p>
+the operator CLI connects to the provider's stock OS over SSH, discovers the root disk, stages the
+kernel and initramfs as files (each verified on the target against its recorded digest), and
+<em>streams</em> the image over the same channel onto the raw byte region at the tail of the root
+disk that §10.1 step 1 verifies. The image never exists as a file on the staging OS, and memory
+on both sides stays O(chunk), not O(image), so the target's RAM does not bound the image size. It
+then loads the operator's <em>local</em> kernel + initramfs via <code>kexec</code> with an
+installer-mode command line (carrying the same defence triple as the runtime, plus the staged
+region's geometry and the image digest the §10.1 pre-pass checks), and hands over. The machine
+warm-boots straight into the installer with no provider imaging involved; on completion it reboots
+into the immutable runtime, and the CLI reconnects against the precomputed host key and verifies
+the box's identity end-to-end.</p>
 <p>Operator-side safety engineering mirrors the box's: the wipe is gated behind an explicit
 confirmation that produces a typed token the destructive path requires; SSH host keys for the
 staging OS are pin-or-confirm fail-closed; all remote invocations are argv-built with no shell
 interpolation; a lock file serialises concurrent deploys; and cancellation is three-state so an
 interrupted ceremony cannot half-proceed.</p>
 
-<div class="callout warn"><span class="tag">Trust boundary — install window</span>
+<div class="callout warn"><span class="tag">Trust boundary: install window</span>
 The staging OS (the provider's stock image) is part of the TCB <em>for the duration of the
 install</em>: a hostile staging environment could substitute the bytes it later boots. On-target
 checksums verify integrity of transfer, not the honesty of a compromised host. This window is a
 documented, accepted residual on BIOS-only rented substrate; the structural close is a root of
-trust below the guest — operator-enrolled UEFI Secure Boot, now built as the custom <em>Rambutan</em>
+trust below the guest: operator-enrolled UEFI Secure Boot, now built as the custom <em>Rambutan</em>
 loader, which the operator can elect on hardware that allows key enrolment (§14).</div>
 
 <!-- ============================================================ 11 -->
@@ -1475,15 +1479,18 @@ report — staged, verified one-command re-derivations of any pinned input (§11
 <tr><td>Pre-deploy check</td><td>the factory's <code>dryrun</code> + the boot gate</td></tr>
 <tr><td>Install</td><td>the factory's <code>prod &lt;target&gt;</code> — the kexec take-over
 ceremony of §10.2</td></tr>
+<tr><td>OS update</td><td>the factory's <code>update &lt;host&gt; --image …</code>: signs an
+update manifest and streams the new image to the box's A/B engine, then watches to a committed
+or rolled-back verdict (§13.2)</td></tr>
 <tr><td>Host-identity precompute</td><td>the factory's <code>derive-rescue-host-keys --image …</code> —
 offline known_hosts pinning (§9.3)</td></tr>
 <tr><td>Day-2 access</td><td>SSH as root (public key), read-mostly: inspect logs/state under
 <code>/persist</code> and <code>dmesg</code>; pull backups</td></tr>
 </tbody>
 </table>
-<p class="cap below"><span class="lbl">Table 9.</span> The complete operator action surface — key
-bootstrap, build, pin lifecycle, pre-deploy check, install, host-identity precompute, and
-read-mostly day-2 access — each with its mechanism.</p>
+<p class="cap below"><span class="lbl">Table 9.</span> The complete operator action surface, each
+action with its mechanism: key bootstrap, build, pin lifecycle, pre-deploy check, install, OS
+update, host-identity precompute, and read-mostly day-2 access.</p>
 
 <p>The surface's exclusions matter equally: there is no mechanism to
 install software on a running box, change its network or proxy or firewall configuration, or edit
@@ -1497,14 +1504,20 @@ bumped pins and a redeploy. The <em>substrate</em> for that lifecycle is shipped
 one-command re-derivations through the staged, verified upgrade executor (§11.2); the A/B slot
 layout, slot-aware boot configuration, and both slots' kernels on <code>/boot</code> carry the
 flip-and-roll-back model; the restore-verify anchor and the box-never-signs backstop are landed
-and gate-proven (§9.5); the box-side A/B update engine is built and ships in the image —
+and gate-proven (§9.5); the box-side A/B update engine is built and ships in the image:
 <code>fb-update</code> performs a manifest-verified update with two anti-rollback floors and an
 inactive-slot write, records a boot-once probation, and <code>fb-mark-good</code> is the explicit
-acceptance that ends it. Today's exercised update path in production remains the
-operator-attended kexec ceremony; the remaining phase is the end-to-end self-update ceremony
-around the shipped engine — the box pulling an operator-signed update and flipping through it. That same immutability leaves the system <em>stale by
-default</em>, so CVE tracking and rebuild cadence are first-class operational duties in this
-model; the pin tooling's drift report makes that duty a one-command check.</p>
+acceptance that ends it. The engine is live-proven on the production reference box in both
+directions: an operator-pushed update flipped the running box to the inactive slot and committed,
+and an earlier bad payload was rolled back to the known-good slot by the boot-once fallback with
+no operator action. The push ceremony (§13.1) verifies the build's signatures locally, connects
+under the pinned host key, composes and signs an update manifest, streams the image to the on-box
+engine, and watches to a committed or rolled-back verdict. This path refreshes code within a
+fixed box shape; a change of shape (partition layout, tenants) is a rebuild deployed through the
+§10.2 take-over. The remaining phase is box-pulled self-update: the box fetching an
+operator-signed update and flipping through it unattended. That same immutability leaves the
+system <em>stale by default</em>, so CVE tracking and rebuild cadence are first-class operational
+duties in this model; the pin tooling's drift report makes that duty a one-command check.</p>
 
 <h3>13.3 Signing pipeline roadmap</h3>
 <p>The remaining trust concentration is the operator's build host, which currently holds the
@@ -1543,7 +1556,8 @@ closed by the same UEFI branch.</td></tr>
 <tr><td>Install-time image-signature verify not yet wired</td><td>The ed25519 scheme is shipped: it verifies its first hard consumer today — restore archives are
 checked before any destructive write (§9.5) — and the image's own <code>.sig</code> sidecars are emitted at build. The one
 remaining verify site is the installer checking the image's signature at install time; it rides
-the self-update ceremony (§13.2), whose clock-free verify is designed. Until then the image's
+the self-update ceremony (§13.2), and the clock-free verify it needs already ships, checking
+restore archives today. Until then the image's
 integrity in transit rests on the operator-attended ceremony + checksums — adequate against
 accident, not against a compromised staging host (which is already the named residual
 above).</td></tr>
@@ -1552,7 +1566,7 @@ remains possible by design.</td></tr>
 <tr><td>Provisioning self-healing</td><td>A crash in the first seconds of first-boot provisioning
 can leave zero-byte secret files that crash-loop the affected services (operator SSH remains up;
 nothing is bricked). The robust fix — self-healing regeneration with guards against re-minting an
-in-use CA — is specified and scheduled.</td></tr>
+in-use CA — is specified and in development.</td></tr>
 <tr><td>Single-box scope</td><td>No clustering, no HA, no horizontal anything. One box fronts
 one payload application by design, beside its own supporting services (§7.3): the manifest's edge
 schema binds a single application backend plus the ACME path, so a second exposed application is
