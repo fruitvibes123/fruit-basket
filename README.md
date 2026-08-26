@@ -27,7 +27,9 @@ system that runs, and the kernel enforces that equivalence continuously:
 The full design — threat model, boot chain, integrity architecture, init and supervision,
 networking, persistence and recovery, the reproducible build pipeline, and the accepted
 limitations — is in **[WHITEPAPER.md](WHITEPAPER.md)**; a rendered version is published at
-**<https://fruitvibes123.github.io/fruit-basket/>**.
+**<https://fruitvibes123.github.io/fruit-basket/>**. The companion loader has its own paper:
+**[Rambutan — the UEFI Secure Boot
+loader](https://fruitvibes123.github.io/fruit-basket/rambutan-whitepaper.html)**.
 
 ## Components
 
@@ -35,7 +37,7 @@ limitations — is in **[WHITEPAPER.md](WHITEPAPER.md)**; a rendered version is 
 |---|---|
 | `crates/box-init` | runtime PID 1: bootstrap one-shots, network bring-up, services-vs-rescue branch, supervision hand-off |
 | `crates/initramfs-init` | early-boot PID 1: cmdline contract, dm-verity setup, IMA policy load, `switch_root`; doubles as the copy-only installer |
-| `crates/rambutan` | the hand-rolled UEFI Secure Boot loader (the operator-enrolled-keys arm) |
+| `crates/rambutan` | the hand-rolled UEFI Secure Boot loader (the operator-enrolled-keys arm; [its whitepaper](https://fruitvibes123.github.io/fruit-basket/rambutan-whitepaper.html)) |
 | `crates/fb-acme` | ACME HTTP-01 challenge server + certificate renewal client |
 | `crates/fb-backup`, `crates/fb-cert-check` | daily snapshot; daily certificate-expiry alarm |
 | `crates/fb-oneshots` | the in-image bootstrap one-shot binary |
@@ -77,4 +79,4 @@ cmdline-namespace lock, the crypto sentry).
 The copyleft is a floor the system sits on, not a solvent:
 - **Bundled third-party components** (Linux kernel, busybox, haproxy, nftables, e2fsprogs, …) keep their own licenses — shipping them in the image is mere aggregation, not relicensing.
 - **Apps that run on the box** (separate binaries talking via the service manifest / sockets / exec) keep their own licenses — same as userspace on the GPLv2 kernel. Only *statically linking* an FB GPL-2.0 crate into an app's binary pulls that app under GPLv2.
-- **Reusable library crates** live in the sibling ecosystem repos under their own permissive (MIT/Apache) terms.
+- **Reusable library crates** live in the sibling ecosystem repos under their own permissive (MIT/Apache) terms. Six seed-vault crates are on crates.io: [dragonfruit](https://crates.io/crates/dragonfruit) (GPL-2.0-only), [pomelo-guard](https://crates.io/crates/pomelo-guard), [coconut-fs](https://crates.io/crates/coconut-fs), [pomegranate](https://crates.io/crates/pomegranate), [durian-throttle](https://crates.io/crates/durian-throttle), and [grape-hostkey](https://crates.io/crates/grape-hostkey).

@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rambutan — Engineering White Paper</title>
+<style>
+  :root {
+    --ink:      #16202e;
+    --ink-soft: #43505f;
+    --line:     #d7dde4;
+    --bg:       #eef1f4;
+    --card:     #ffffff;
+    --accent:   #0d6e6e;
+    --accent-dk:#084f4f;
+    --warn-bg:  #fbf0e2;
+    --warn-bd:  #b4690e;
+    --note-bg:  #e6f4ec;
+    --note-bd:  #1f8a4c;
+    --neutral-bg:#eceff2;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.62;
+    padding: 32px 18px 80px;
+  }
+  .paper { max-width: 900px; margin: 0 auto; }
+
+  header.band {
+    background: linear-gradient(135deg, var(--accent-dk) 0%, var(--accent) 100%);
+    color: #eafafa; border-radius: 14px; padding: 30px 32px;
+    box-shadow: 0 6px 22px rgba(8,79,79,.20); margin-bottom: 30px;
+  }
+  header.band .kicker {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .18em;
+    text-transform: uppercase; color: #aee3e3; margin: 0 0 8px;
+  }
+  header.band h1 { margin: 0; font-size: 30px; letter-spacing: -.01em; font-weight: 700; }
+  header.band .sub { margin: 10px 0 0; font-size: 15px; color: #d2f0f0; max-width: 72ch; }
+  header.band .meta {
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.18);
+    font-family: var(--mono); font-size: 11.5px; color: #bfe7e7;
+    display: flex; flex-wrap: wrap; gap: 6px 26px;
+  }
+  /* <code> in the teal band: the light page-default code background would be near-white
+     on near-white. Use a translucent-light chip with light text so it reads on the gradient. */
+  header.band code { background: rgba(255,255,255,.14); color: #eafafa; }
+
+  main { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+         padding: 38px 44px 48px; box-shadow: 0 1px 2px rgba(22,32,46,.04); }
+  @media (max-width: 700px) { main { padding: 24px 18px; } }
+
+  h2 {
+    font-size: 21px; margin: 2.2em 0 .6em; color: var(--accent-dk);
+    border-bottom: 2px solid var(--line); padding-bottom: 6px; letter-spacing: -.01em;
+  }
+  h2:first-of-type { margin-top: .4em; }
+  h3 { font-size: 16.5px; margin: 1.8em 0 .4em; color: var(--ink); }
+  h4 { font-size: 14.5px; margin: 1.4em 0 .3em; color: var(--ink-soft);
+       text-transform: uppercase; letter-spacing: .06em; }
+  p { margin: .65em 0; }
+  ul, ol { margin: .5em 0 .9em; padding-left: 1.5em; }
+  li { margin: .28em 0; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--mono); font-size: .85em;
+    background: var(--neutral-bg); padding: 1px 5px; border-radius: 4px;
+  }
+  pre {
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.5;
+    background: #f6f8f9; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; margin: .9em 0;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  pre.diagram { background: #102a2a; color: #cfeaea; border-color: #0b3d3d; }
+
+  /* Figure / table captions — both sit BELOW their element (use class "cap below"). */
+  .cap {
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.5; color: var(--ink-soft);
+    margin: 1.5em 0 .45em;
+  }
+  .cap .lbl { color: var(--accent-dk); font-weight: 700; letter-spacing: .04em; }
+  .cap.below { margin: .5em 0 1.6em; }
+
+  table {
+    border-collapse: collapse; width: 100%; margin: .9em 0; font-size: 13.5px;
+  }
+  th, td {
+    text-align: left; padding: 8px 11px; border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    background: #f3f6f7; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--ink-soft); border-bottom: 2px solid var(--line);
+  }
+  td code, th code { font-size: 12px; }
+
+  .callout {
+    border-left: 4px solid var(--note-bd); background: var(--note-bg);
+    border-radius: 0 10px 10px 0; padding: 10px 16px; margin: 1em 0; font-size: 14px;
+  }
+  .callout.warn { border-left-color: var(--warn-bd); background: var(--warn-bg); }
+  .callout .tag {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; font-weight: 700;
+    text-transform: uppercase; color: var(--ink-soft); display: block; margin-bottom: 2px;
+  }
+
+  nav.toc {
+    background: #f6f8f9; border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 22px; margin: 1.2em 0 2em; font-size: 14px; columns: 2; column-gap: 36px;
+  }
+  @media (max-width: 700px) { nav.toc { columns: 1; } }
+  nav.toc ol { margin: 0; padding-left: 1.4em; }
+  nav.toc a { text-decoration: none; }
+  nav.toc a:hover { text-decoration: underline; }
+
+  .glance { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 1em 0 1.4em; }
+  .glance .cell {
+    background: #f6f8f9; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
+  }
+  .glance .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+               text-transform: uppercase; color: var(--ink-soft); }
+  .glance .v { font-size: 14px; font-weight: 650; margin-top: 2px; }
+
+  footer { margin-top: 28px; text-align: center; font-size: 12px; color: var(--ink-soft); }
+  @media print {
+    body { background: #fff; padding: 0; }
+    main { border: none; box-shadow: none; padding: 0; }
+    header.band { box-shadow: none; border-radius: 0; }
+    pre, table { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="paper">
+
+<header class="band">
+  <p class="kicker">Engineering White Paper</p>
+  <h1>Rambutan</h1>
+  <p class="sub">A hand-rolled, ~11 KB UEFI Secure Boot loader that roots a Linux appliance's boot chain
+  in keys the operator owns. It replaces kernel-configuration boot policy with policy expressed as code,
+  verifies every pre-kernel byte against an operator-enrolled key database, and serves the kernel a fixed
+  command line and a digest-checked initramfs that no boot-time input can alter. Its entire dependency
+  closure is <code>core</code> plus one SHA-256 implementation.</p>
+  <div class="meta">
+    <span>REV 1.0 — June 2026</span>
+    <span>STATUS: verified-boot chain proven on OVMF; signed-USB install + real-hardware enrolment in progress</span>
+    <span>AUDIENCE: firmware and security engineers</span>
+  </div>
+</header>
+
+<main>
+
+<h2 id="toc-h" style="margin-top:0">Contents</h2>
+<nav class="toc">
+<ol>
+  <li><a href="#intro">Introduction</a></li>
+  <li><a href="#threat">Threat model and scope</a></li>
+  <li><a href="#chain">Verified boot</a></li>
+  <li><a href="#contract">Loader contract</a></li>
+  <li><a href="#crypto">Cryptographic mechanics</a></li>
+  <li><a href="#cmdline">Command line and initramfs delivery</a></li>
+  <li><a href="#custody">Key custody and enrolment</a></li>
+  <li><a href="#build">Build, size and reproducibility</a></li>
+  <li><a href="#verify">Verification and assurance</a></li>
+  <li><a href="#limits">Limitations and accepted residuals</a></li>
+  <li><a href="#glossary">Appendix — glossary</a></li>
+</ol>
+</nav>
+
+<div class="glance">
+  <div class="cell"><div class="k">Loader binary</div><div class="v">11,264 B unsigned · 11,776 B db-signed</div></div>
+  <div class="cell"><div class="k">Dependency closure</div><div class="v"><code>core</code> + RustCrypto <code>sha2</code> — no std, alloc, or libc</div></div>
+  <div class="cell"><div class="k">Target</div><div class="v">x86_64-unknown-uefi (PE32+)</div></div>
+  <div class="cell"><div class="k">Boot ABIs</div><div class="v">UEFI 2.10 · Linux LoadOptions · LoadFile2 initrd</div></div>
+  <div class="cell"><div class="k">SB key family</div><div class="v">RSA-3072 / SHA-256 · PK → KEK → db</div></div>
+  <div class="cell"><div class="k">Content checks</div><div class="v">3 — loader, kernel, initramfs (each exactly once)</div></div>
+  <div class="cell"><div class="k">Runtime input surface</div><div class="v">zero — own LoadOptions never read</div></div>
+  <div class="cell"><div class="k">Absent by construction</div><div class="v">shim · GRUB · MOK · Microsoft CA · kernel-config boot policy</div></div>
+</div>
+
+<!-- ============================================================ 1 -->
+<h2 id="intro">1. Introduction</h2>
+
+<p>Rambutan is the program that runs between the firmware and the Linux kernel on a <em>Fruit Basket</em>
+appliance. At about eleven kilobytes it is small enough to read in full. It makes every byte that executes
+before userspace verifiable against keys the operator controls, and denies boot-time input any ability to
+change what boots or how.</p>
+
+<p>An earlier design kept this policy in the kernel's build configuration, relying on EFI-stub behaviour
+and a set of <code>CONFIG_*</code> symbols: a fixed kernel command line, refusal of an attacker-supplied
+initramfs, and delivery of per-build parameters. This coupled the appliance's boot security to kernel
+symbol names and EFI-stub source, both of which change across kernel versions and architectures. Across
+seven rebuilds it produced five version-specific boot-critical bugs that the build's test suite did not
+detect, so <strong>boot policy moved into code the operator writes and freezes.</strong></p>
+
+<p>The kernel is therefore ordinary: a plain bzImage with no command-line-override or embedded-initramfs
+configuration, identical to the legacy-BIOS build's. The policy that used to live in Kconfig is now a few
+hundred lines of Rust that hand the kernel its command line and its initramfs, both verified first. The
+loader binds only to contracts frozen by specification: the UEFI protocol ABIs, the Linux boot ABI for
+passing a command line and an initramfs, and the stable Rust UEFI target. None of these move with a kernel
+bump, so the bug class that drove the rewrite is closed by construction.</p>
+
+<p>Hand-rolling rather than adopting an existing UEFI Rust framework follows from the same constraint. A
+loader bound only to frozen ABIs needs no churning dependency in the un-appraised boot window, and a
+general-purpose framework would pull its release cadence and transitive crates into the one surface that
+must stay fixed. Rambutan's entire dependency tree is <code>core</code> plus the RustCrypto
+<code>sha2</code> stack, the latter used for one operation: hashing the initramfs.</p>
+
+<!-- ============================================================ 2 -->
+<h2 id="threat">2. Threat model and scope</h2>
+
+<p>Secure Boot is the foundation of rambutan's boot design rather than a feature added to a generic boot
+path: <strong>with the operator's own keys enrolled on owned hardware, every pre-kernel byte is verified by
+a chain the operator roots</strong> — no shim, no Microsoft signature, no Machine Owner Key shimming, no
+GRUB. The loader makes that chain complete and gives boot-time input no point of entry.</p>
+
+<h3>2.1 Boot-input injection surface</h3>
+<p>A UEFI boot manager passes a launched program its <em>LoadOptions</em> — an attacker-influenceable
+field in a boot-menu entry's optional data. The Linux kernel's EFI stub will, by default, read a
+command line from there and will honour an <code>initrd=</code> token pointing at an attacker-chosen file.
+NVRAM boot entries, the ESP's filesystem metadata, and the firmware's variable store are all surfaces a
+physical or firmware-level adversary can perturb. The loader treats all of them as selection metadata, never
+as trusted content: it never reads its own LoadOptions, it sets the kernel's command line to a constant it
+carries internally, and it provides the initramfs itself rather than letting the kernel fetch one named on a
+command line.</p>
+
+<h3>2.2 Install-time trusted window</h3>
+<p>On a rented virtual machine the install step is a structural concession: code runs to write the disk
+before anything has verified it, under a provider hypervisor beneath the guest. Secure Boot on
+<em>owned</em> hardware shrinks that concession from "trust the provider's entire stack" to "trust a
+board vendor's firmware and the operator's own physical custody," a smaller and operator-inspectable floor. The loader
+is therefore tied to a sovereign substrate, though not because enrolment is impossible elsewhere: some
+rented platforms (AWS Nitro, Azure Trusted Launch) allow an operator to enrol their own PK/KEK/db, but the
+firmware that enforces those keys and the hypervisor beneath it stay the provider's, so the
+<em>enforcement</em> root is rented even when the signing keys are the operator's. Secure Boot there hardens
+the guest's boot against in-guest tampering without making the substrate sovereign.</p>
+
+<h3>2.3 Guarantees and limits</h3>
+<p>Against a remote attacker the verified chain is complete: there is no pre-kernel byte the attacker can
+substitute. Against an attacker with physical control of the firmware's variable store, Secure Boot yields
+<em>cost and evidence</em> rather than prevention: such an attacker can clear the keys, enrol their own, and
+re-sign a tampered chain that boots looking normal. The mitigation there is procedural (custody, tamper
+evidence), and the detector is the enrolled-key set itself (§7.3). The structural close for that adversary is
+measured boot bound to a TPM, documented here as a named future addition, not as a present capability.</p>
+
+<!-- ============================================================ 3 -->
+<h2 id="chain">3. Verified boot</h2>
+
+<p>Three pieces of content are executed or consumed before userspace: the loader, the kernel, and the
+initramfs. Each is integrity-checked exactly once, and a failure at
+any link halts the boot rather than degrading it.</p>
+
+<pre class="diagram"> PLATFORM FIRMWARE             RAMBUTAN LOADER              LINUX KERNEL
+ PK / KEK / db enrolled        ~11 KB, db-signed PE         plain bzImage, db-signed
+ ──────────────────────        ──────────────────────       ──────────────────────────
+ 1 verify the loader ─────────▶starts (db-trusted)
+                            │
+                            ├─ read \vmlinuz + \initrd
+                            ├─ 2 digest-check \initrd
+                            │
+ 3 re-verify the    <───────┤  LoadImage(\vmlinuz)
+   kernel buffer vs db      │
+   (EFI_SUCCESS only)       │
+                            │
+                            ├─ set the baked cmdline    ─▶  receives the fixed cmdline
+                            ├─ serve \initrd (LoadFile2)─▶  pulls the verified initramfs
+                            │
+                            ▼
+                               StartImage               ─▶  /init → dm-verity → IMA
+
+A failed check (2, 3, or the loader's SB_REQUIRED gate) halts the boot — nothing downstream runs.</pre>
+<p class="cap below"><span class="lbl">Figure 1.</span> The verified boot chain — which party
+verifies each of the three executed-or-consumed artifacts, and where any failure halts.</p>
+
+<table>
+<thead><tr><th>Content</th><th>Verified by</th><th>Mechanism</th><th>On failure</th></tr></thead>
+<tbody>
+<tr><td>The loader PE</td><td>Platform firmware</td><td>Secure Boot image verification against enrolled <code>db</code></td><td>Firmware refuses to start it</td></tr>
+<tr><td>The kernel PE</td><td>Platform firmware, invoked by the loader</td><td><code>LoadImage</code> re-hashes the supplied buffer against <code>db</code></td><td>Loader prints + halts; the kernel never starts</td></tr>
+<tr><td>The initramfs</td><td>The loader itself</td><td>SHA-256 compared to a digest baked into the signed loader</td><td>Loader prints + halts; nothing is started</td></tr>
+</tbody>
+</table>
+<p class="cap below"><span class="lbl">Table 1.</span> The three content checks — what verifies the loader,
+the kernel, and the initramfs, each exactly once, and the failure behaviour of each.</p>
+
+<p>Selection metadata — the GPT, the ESP's FAT directory, NVRAM boot variables — is deliberately
+<em>not</em> in this table. A tamper there can only mis-select a target whose <em>content</em> is then
+caught by one of the three checks above (a redirected initramfs fails the digest; a swapped kernel fails
+<code>LoadImage</code>; a corrupt rootfs partition fails dm-verity downstream). Integrity is asserted over
+content; selection is covered by fail-closed rejection of whatever it selects.</p>
+
+<!-- ============================================================ 4 -->
+<h2 id="contract">4. Loader contract</h2>
+
+<p>The loader is a single straight-line program with no event loop and no runtime configuration. Its
+behaviour is fixed by three constants baked in at build time and by an exhaustively enumerated control flow.</p>
+
+<h3>4.1 Baked constants</h3>
+<table>
+<thead><tr><th>Constant</th><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>KERNEL_CMDLINE</code></td><td><code>&amp;str</code></td><td>The exact command line the kernel receives — the verity root hash, the hash-tree offset, the slot-A <code>PARTUUID</code>, the firmware tag, the defence triple, optional network tokens. Frozen at build; never patched at install.</td></tr>
+<tr><td><code>INITRD_SHA256</code></td><td><code>[u8; 32]</code></td><td>The expected SHA-256 of the initramfs the loader will serve. Binds the initramfs to this signed loader.</td></tr>
+<tr><td><code>SB_REQUIRED</code></td><td><code>bool</code></td><td>Per-rung policy: a Secure-Boot-rung image refuses to run with Secure Boot disabled.</td></tr>
+</tbody>
+</table>
+<p class="cap below"><span class="lbl">Table 2.</span> The loader's three build-time constants — the entirety
+of its configuration surface.</p>
+
+<h3>4.2 Control flow</h3>
+<ol>
+  <li><strong>Locate own image.</strong> Resolve the loader's own <code>EFI_LOADED_IMAGE_PROTOCOL</code> to
+  obtain the device handle it was loaded from — its ESP. The loader's <em>own</em> incoming LoadOptions are
+  never read; the runtime input surface is zero.</li>
+  <li><strong>Secure Boot gate.</strong> If <code>SB_REQUIRED</code>, read the firmware's
+  <code>SecureBoot</code> variable and proceed only on <code>EFI_SUCCESS</code> with a value of exactly
+  <code>0x01</code>. Absent, off, or an error halts — fail-closed.</li>
+  <li><strong>Read inputs from its own ESP only.</strong> Open the loader's own filesystem and read
+  <code>\vmlinuz</code> and <code>\initrd</code>. No other volume and no other path is consulted.</li>
+  <li><strong>Initramfs digest gate.</strong> SHA-256 the initramfs buffer and compare it to
+  <code>INITRD_SHA256</code>. A mismatch halts before the kernel is ever loaded.</li>
+  <li><strong>Load the kernel, re-verified.</strong> Call <code>LoadImage</code> with boot-policy false, the
+  real <code>\vmlinuz</code> media device path, and the in-memory buffer. The platform re-hashes the buffer
+  against <code>db</code> (§5.1). The status must be <code>EFI_SUCCESS</code>; both
+  <code>EFI_SECURITY_VIOLATION</code> and <code>EFI_ACCESS_DENIED</code> are fatal — the loader never calls
+  <code>StartImage</code> on an image the platform flagged.</li>
+  <li><strong>Set the command line.</strong> On the kernel's loaded-image protocol, set
+  <code>LoadOptions</code> to <code>KERNEL_CMDLINE</code> as a null-terminated UCS-2 string, with the size
+  field including the terminator.</li>
+  <li><strong>Serve the initramfs.</strong> Install, on a fresh handle, a vendor-media device path bearing
+  the <code>LINUX_EFI_INITRD_MEDIA_GUID</code> together with an <code>EFI_LOAD_FILE2_PROTOCOL</code> that
+  serves exactly the verified initramfs buffer. The kernel's stub locates this handle and pulls the
+  initramfs from it.</li>
+  <li><strong>Start.</strong> <code>StartImage</code> on the verified kernel.</li>
+</ol>
+
+<h3>4.3 Protocol surface</h3>
+<p>The loader's bindings to the firmware are a deliberate whitelist: the boot- and runtime-services entries
+it calls (<code>HandleProtocol</code>, <code>LoadImage</code>, <code>StartImage</code>,
+<code>InstallProtocolInterface</code>, <code>AllocatePool</code>, <code>GetVariable</code>), the file and
+filesystem protocols, the device-path protocol, and the load-file-2 protocol. Each underlying structure is a
+hand-written layout matched field-by-field against the UEFI 2.10 specification, because a single wrong
+function-pointer offset would be a silent miscall the compiler cannot catch. The structures are frozen
+contracts; nothing outside the whitelist is reachable.</p>
+
+<div class="callout">
+  <span class="tag">Why so little can go wrong</span>
+  The program has no parser for untrusted input, no allocator-heavy state machine, and no network. Its only
+  external reads are two files from a filesystem the firmware already vouched for, and its only cryptographic
+  operation is one SHA-256. The attack surface is roughly: the correctness of the eight steps above, the
+  fidelity of the ABI structs, and the firmware beneath it.
+</div>
+
+<!-- ============================================================ 5 -->
+<h2 id="crypto">5. Cryptographic mechanics</h2>
+
+<h3>5.1 Kernel re-verification via <code>LoadImage</code></h3>
+<p>The loader does <em>not</em> verify the kernel itself, and must not try to. When it calls
+<code>LoadImage</code> with an in-memory source buffer, the platform's image-verification path hashes that
+buffer and checks it against <code>db</code>/<code>dbx</code> — for a memory load, not only for a load from a
+file. A kernel signed by a key absent from <code>db</code>, unsigned, or signed by a revoked key yields
+<code>EFI_SECURITY_VIOLATION</code> or <code>EFI_ACCESS_DENIED</code>, and the loader's
+<code>EFI_SUCCESS</code>-only check turns that into a halt. The loader therefore inherits the firmware's
+signature verification for the kernel instead of re-implementing it, which is smaller and harder to get
+subtly wrong. This behaviour was confirmed against the reference EDK2 implementation and is the subject of
+two negative boot tests: an unsigned kernel and a wrong-key-signed kernel, both halted.</p>
+
+<h3>5.2 Secure Boot key family</h3>
+<p>Secure Boot's trust is rooted in three operator-generated keys whose X.509 relationships mirror the
+firmware's own variable-update authority hierarchy:</p>
+
+<pre class="diagram">RSA-3072 / SHA-256, generated by the operator off-box:
+
+   PK   recipes-sb-pk      self-signed root        CA:TRUE
+    │
+    └─ signs ─▶  KEK   recipes-sb-kek      PK-signed     CA:TRUE
+                  │
+                  └─ signs ─▶  db   recipes-sb-db    image-signing leaf
+                                    digitalSignature + code-signing EKU
+
+Each certificate is enrolled into its matching firmware variable (PK / KEK / db).
+The firmware verifies the loader against db; the loader's LoadImage re-verifies the
+kernel against db.</pre>
+<p class="cap below"><span class="lbl">Figure 2.</span> The Secure Boot key family — the
+PK&nbsp;→&nbsp;KEK&nbsp;→&nbsp;db certificate chain, how each certificate is enrolled into a firmware
+variable, and which key verifies the loader and the kernel.</p>
+
+<ul>
+  <li><strong>Algorithm.</strong> RSA-3072 with SHA-256 is the primary choice, by firmware convention:
+  real UEFI implementations universally exercise RSA Authenticode for <code>db</code>, whereas elliptic-curve
+  support is uneven. RSA-2048 is a documented downgrade for firmware that rejects 3072, gated on a
+  demonstrated test-boot failure rather than chosen silently. This family is deliberately separate from the
+  appliance's ed25519 artifact-signing keys and its ECDSA integrity-measurement leaves.</li>
+  <li><strong>Chain shape.</strong> PK is self-signed with certificate-signing rights; KEK is signed by PK;
+  <code>db</code> is a leaf signed by KEK carrying <code>digitalSignature</code> and the conventional
+  code-signing extended-key-usage. The extended-key-usage is informational: EDK2 image verification matches
+  the signing certificate or its hash in <code>db</code> and does not gate on the usage bits. But the shape
+  documents intent and matches the variable-update hierarchy the specification expects.</li>
+  <li><strong>Validity is not a control.</strong> Certificate lifetimes are set far in the future and the
+  design does <em>not</em> rely on expiry. EDK2 image verification does not enforce certificate time-validity
+  (verified at source); revocation is the <code>dbx</code> mechanism, and rotation is by re-enrolment
+  (both detailed as lifecycle procedures in §7.4). Treating expiry as a control would invite a surprise
+  lockout with no security benefit.</li>
+</ul>
+
+<h3>5.3 Signing the boot PEs and reproducibility</h3>
+<p>The loader and the kernel are Authenticode-signed with the <code>db</code> key using <code>sbsign</code>
+inside the pinned build container, and the signed images are spliced into the ESP. Signing is not
+byte-deterministic, which matters for the reproducibility argument: <code>sbsign</code> embeds a wall-clock
+<code>signingTime</code> authenticated attribute, so signing the same input twice yields different bytes. The
+reproducibility property the appliance relies on is instead <em>Authenticode-digest equivalence</em>: the
+wall-clock timestamp, the certificate table, the PE checksum, and the certificate-table directory entry all
+live in regions the Authenticode hash excludes by construction. The signed PE's Authenticode-covered bytes
+therefore reproduce the unsigned, byte-reproducible build exactly, even though the raw bytes are not
+identical. The build's
+gate asserts that digest equivalence, not raw byte-identity, because raw byte-identity is unachievable with
+the standard tool and asserting it would be a false assurance.</p>
+
+<h3>5.4 Initramfs digest</h3>
+<p>The one cryptographic primitive the loader itself computes is SHA-256, via the audited RustCrypto
+<code>sha2</code> crate, over the initramfs it has read. The expected value is the
+<code>INITRD_SHA256</code> constant compiled into the loader, which is itself in <code>db</code>'s
+signature scope, so the digest is as trustworthy as the loader. Because the initramfs travels as digest-gated
+content rather than as a PE in <code>db</code>, this is the loader's own gate rather than the firmware's: a
+one-byte change to the served initramfs produces a mismatch and a halt before the kernel is loaded. It also lets the command line carry no <code>initrd=</code> token: the kernel never names or fetches an
+initramfs, and the loader hands it one it has already verified.</p>
+
+<!-- ============================================================ 6 -->
+<h2 id="cmdline">6. Command line and initramfs delivery</h2>
+
+<p>Two long-standing properties of a hardened boot — "the command line is fixed" and "no attacker initramfs"
+— were previously expressed as kernel-configuration switches. The loader provides both as behaviour, and the
+kernel is plain.</p>
+
+<table>
+<thead><tr><th>Property</th><th>Old kernel-config expression</th><th>Loader expression</th></tr></thead>
+<tbody>
+<tr><td>Fixed command line</td><td><code>CONFIG_CMDLINE_OVERRIDE</code> forcing a built-in line</td><td>The loader ignores its own LoadOptions and <em>sets</em> the kernel's to <code>KERNEL_CMDLINE</code>; the kernel runs what the signed loader says.</td></tr>
+<tr><td>No attacker initramfs</td><td>EFI-stub configuration gating <code>initrd=</code></td><td>The only initramfs source is the loader's LoadFile2 handle serving digest-verified bytes; the baked command line carries no <code>initrd=</code> token, and the firmware's LoadOptions never reach the kernel.</td></tr>
+</tbody>
+</table>
+<p class="cap below"><span class="lbl">Table 3.</span> Two hardened-boot properties, compared as kernel
+configuration (the superseded expression) versus loader behaviour (the current one).</p>
+
+<p>The command line is delivered the way the supported Linux UEFI boot ABI specifies: as the kernel's
+<code>LoadOptions</code>, a null-terminated UCS-2 string with the size field counting the terminator. The
+initramfs is delivered the way the same ABI specifies: a handle bearing the well-known
+<code>LINUX_EFI_INITRD_MEDIA_GUID</code> vendor-media device path and an
+<code>EFI_LOAD_FILE2_PROTOCOL</code> implementing the two-call contract (a NULL-buffer size query returning
+<code>EFI_BUFFER_TOO_SMALL</code> and the size, then a copy into the kernel's buffer). The kernel's stub
+locates that handle by GUID and pulls the initramfs from it; no file path is involved.</p>
+
+<div class="callout warn">
+  <span class="tag">Where this rests entirely on the loader</span>
+  The kernel's command-line <code>initrd=</code> loader has been unconditional since Linux 6.2, and the only
+  kernel switches that would make the stub ignore LoadOptions would also break the loader's own command-line
+  delivery. There is therefore <em>no</em> kernel-configuration backstop compatible with this architecture: the
+  "no attacker command line, no attacker initramfs" guarantee rests wholly on the loader ignoring its own
+  LoadOptions and serving its own initramfs. That single property is the subject of a dedicated boot test
+  that injects a command line through a boot-menu entry and confirms the kernel still receives only the
+  baked constant.
+</div>
+
+<!-- ============================================================ 7 -->
+<h2 id="custody">7. Key custody and enrolment</h2>
+
+<h3>7.1 Generation</h3>
+<p>The PK/KEK/db family is minted by a pure-Rust ceremony (<code>recipes-admin deploy generate-keys
+--secure-boot</code>): three RSA keypairs from the OS CSPRNG, the X.509 chain assembled in-process, all six
+files written atomically (all or none) with private keys at mode <code>0600</code> and the directory at
+<code>0700</code>. The same command writes a committed anchor recording the SHA-256 fingerprints of all
+three certificates — the operator's enrolment cross-check, in the same posture as the appliance's other
+pinned-fingerprint files.</p>
+
+<h3>7.2 Custody rungs</h3>
+<p>The buildable-now floor (<code>software</code>) keeps the family in the operator's keys directory; it
+weakens only the operator's own exposure, never the box's verified chain. The hardware rungs
+(<code>one-signer</code>, <code>two-signers</code>) route the <code>db</code> key to an air-gapped signer
+for a round-trip signing operation, so the signing key need never sit on the build host — these are named,
+fail-closed forward-debt that mirror the appliance's artifact-signer ceremony. Signing of the boot PEs is a
+container <code>sbsign</code> step regardless of rung; the <code>db</code> key is a bind-mounted input, and
+no signing tool ever resides on the box.</p>
+
+<h3>7.3 Detecting a physical re-key</h3>
+<p>Against an attacker with physical control of the firmware's variable store, the detector is
+the enrolled-key set. A naïve check of "is the operator's PK present?" is defeated trivially: setup-mode
+enrolment requires no proof of key possession, so a re-keying attacker can re-enrol the operator's
+<em>public</em> PK while substituting their own <code>db</code> (they cannot sign with the operator's
+<code>db</code> private key). The detector that works is therefore an <strong>exact-set</strong> comparison —
+enumerate every enrolled PK, KEK, and <code>db</code> entry and require the set to equal exactly the
+operator's committed fingerprints. An appended entry is the tamper signature: the attacker's own certificate, or a bare image-hash
+authorisation, both of which <code>db</code> permits. "My own fingerprints are present" proves nothing,
+because the attacker leaves them and adds to them. This check is an operator
+procedure, documented in an enrolment runbook, because the box cannot trust its own firmware variables to
+self-audit. Its structural replacement is TPM-measured boot, deferred.</p>
+
+<h3>7.4 Rotation, revocation, and key recovery</h3>
+
+<p>Three lifecycle events follow generation, and each has a definite procedure rather than an assumed one.
+The appliance's scale — one operator, sovereign hardware, physical custody — makes the simple form of each
+correct rather than a shortcut, the same way §5.2 treats expiry as deliberately not a control.</p>
+
+<p><strong>Rotation has two paths; the operator chooses by what they still hold.</strong> With the operator's
+PK enrolled and the firmware in User Mode, a key is replaced in place by an authenticated variable update
+signed by its parent — a new <code>db</code> signed by KEK, a new KEK or PK signed by the current PK. That
+path is remote-capable and needs the current parent private key. If that key is lost the in-place path is
+closed, and rotation instead drops the firmware to Setup Mode by a physically-present operator and re-enrols
+the family. Re-enrolment is the default on purpose: a fleet of one needs no authenticated key distribution,
+and the ceremony that enrols a board's first PK is the ceremony that rotates it. A rotated <code>db</code>
+also means re-signing the loader and kernel and redeploying — the boot PEs are signed artifacts, not enrolled
+variables, so they follow the redeploy path, not the variable-update path.</p>
+
+<p><strong>Revocation is <code>dbx</code>, held for retiring a signature already in the wild.</strong> The
+forbidden-signatures database denies a specific signer certificate or image hash, and it is the right
+instrument when a signed image must stop verifying on firmware that will keep meeting it — a leaked
+<code>db</code> key whose past signatures must be retired in place. For one appliance whose every boot image
+the operator controls, the ordinary answer to a compromised signer is the rotation above: re-key, re-sign,
+redeploy, which retires the old signer by replacement. It is the exception here, not the routine path; maintaining a growing revocation list would be the wrong
+default on hardware the operator physically holds.</p>
+
+<p><strong>Key recovery is the operator's: the box escrows no root keys.</strong> Their off-host backup is
+the operator's posture for a root secret, by the same logic that keeps the artifact-signer keys off the
+appliance. The blast
+radius of loss is bounded: a lost <code>db</code> key stops new images being signed
+but boots every deployed box unchanged, and is recovered by the rotation above; a lost PK closes the in-place
+authenticated update but does <em>not</em> brick the board.</p>
+
+<div class="callout">
+  <span class="tag">Lost PK is recoverable, not terminal — on hardware chosen for it</span>
+  "A set PK bricks the hardware" conflates two paths. Clearing PK by an <em>authenticated variable write</em>
+  needs the current PK private key, and is closed if that key is lost. But conformant firmware also
+  exposes a <em>physically-present</em> path: the setup-utility "clear Secure Boot keys / reset to Setup
+  Mode" operation, authorised by presence at the machine rather than by a signature, which returns the
+  platform to Setup Mode with no key at all, ready to re-enrol. That path lives in the firmware, below and
+  outside the box, so even a fully compromised appliance cannot remove it. Its one dependency is the
+  hardware: a board whose firmware locks out user key-clearing would genuinely strand a lost PK, which makes
+  "exposes operator-controlled Secure Boot key management" a procurement criterion for the sovereign
+  substrate, alongside the ability to enrol a custom PK at all. The cost of a lost PK is a trip to the
+  machine, not a dead board. The same reset-to-Setup-Mode path also exists under OVMF, so the recovery
+  ceremony can be demonstrated in the existing harness rather than only asserted.
+</div>
+
+<!-- ============================================================ 8 -->
+<h2 id="build">8. Build, size and reproducibility</h2>
+
+<p>The loader is compiled for <code>x86_64-unknown-uefi</code> in the pinned build container. Its three
+constants are injected as a generated source module from build-script environment variables — there is no
+post-link byte-patching, because patching would break both the reproducibility argument and the signature.
+The build fails closed if the policy environment is absent: a loader without its policy must not come into
+existence, so a missing-constant build panics rather than baking a default.</p>
+
+<table>
+<thead><tr><th>Measure</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Unsigned loader PE</td><td><strong>11,264 bytes</strong> (11 KiB)</td></tr>
+<tr><td>db-signed loader PE</td><td><strong>11,776 bytes</strong> (+512 B PKCS#7 certificate table)</td></tr>
+<tr><td>Dependency closure (uefi target)</td><td><code>rambutan</code> + the RustCrypto SHA-256 stack (<code>sha2</code>, <code>digest</code>, <code>block-buffer</code>, <code>crypto-common</code>, <code>generic-array</code>, <code>typenum</code>, <code>cpufeatures</code>, <code>cfg-if</code>) — no <code>std</code>, <code>alloc</code>, or <code>libc</code></td></tr>
+<tr><td>For scale</td><td>shim and GRUB are each on the order of 1–2 MB; systemd-boot ~100 KB</td></tr>
+</tbody>
+</table>
+<p class="cap below"><span class="lbl">Table 4.</span> Loader size and dependency-closure measures, with a
+size comparison to common bootloaders.</p>
+
+<p>The dependency closure is held by a build-time tree-lock test: any crate creeping into the boot window —
+anything pulling <code>std</code>, <code>alloc</code>, or a heavy framework — fails the build, not the boot.
+Two reproducibility gates run on produced bytes: the unsigned loader builds byte-identically twice over
+fixed inputs, and the signed PE's Authenticode digest equals the unsigned reproducible build's (§5.3). The
+one runtime branch in the digest path is RustCrypto's CPU-feature detection choosing a SHA-NI versus a
+portable code path — a bare CPUID instruction with no operating-system surface, and both paths are the same
+audited implementation.</p>
+
+<!-- ============================================================ 9 -->
+<h2 id="verify">9. Verification and assurance</h2>
+
+<p>The loader's pure logic is host-tested: the UCS-2 command-line encoding, the SHA-256 gate, the
+device-path construction, and the fail-closed Secure-Boot decision. Its firmware-facing behaviour is proven
+on produced bytes under OVMF, the open EDK2 firmware, in a battery of <code>#[ignore]</code>d gates that run
+the real signed image and assert against the boot console. A gate that is not given its environment panics
+rather than reporting a false pass.</p>
+
+<table>
+<thead><tr><th>Gate</th><th>Asserts</th></tr></thead>
+<tbody>
+<tr><td>SB-off end-to-end</td><td>The installed disk boots through OVMF → loader → plain kernel with the baked command line → digest-served initramfs → dm-verity → services, with no <code>-kernel</code> shortcut.</td></tr>
+<tr><td>SB-on signed chain</td><td>With the operator's PK/KEK/db enrolled in firmware variables, a db-signed loader and kernel boot the full chain to services. The firmware verifies the loader; the loader's <code>LoadImage</code> re-verifies the kernel.</td></tr>
+<tr><td>Negative: unsigned / wrong-key kernel</td><td>The loader halts at <code>LoadImage</code>; the kernel never starts — the §5.1 fact, empirically.</td></tr>
+<tr><td>Negative: tampered initramfs</td><td>A one-byte change to the served initramfs trips the loader's own digest gate and halts.</td></tr>
+<tr><td>Negative: injected command line</td><td>A boot-menu entry carrying an attacker command line still yields a kernel command line equal to the baked constant — the sole empirical proof that the loader ignores its own LoadOptions.</td></tr>
+<tr><td>Negative: <code>SB_REQUIRED</code> on SB-off</td><td>An SB-required image on non-enforcing firmware self-halts, proving the flag gates.</td></tr>
+<tr><td>Identity handshake</td><td>The booted box's derived host identity matches the operator's offline precompute, proving the command-line-delivered root hash fed the box's own derivation.</td></tr>
+</tbody>
+</table>
+<p class="cap below"><span class="lbl">Table 5.</span> The OVMF produced-bytes gate battery — each boot gate
+and the property it asserts against the real signed image.</p>
+
+<p>The implementation passed a three-surface, fresh-context code audit that iterated to a strict
+zero-finding convergence across four rounds: the boot chain and command-line seam, the key custody and
+signing, and the build and reproducibility. Two of its findings shaped the final design: it caught a reproducibility
+gate that asserted a <em>false</em> determinism invariant and was never run (now the
+Authenticode-digest gate of §5.3, running on produced bytes), and it caught that an earlier un-deferring of
+the firmware build had silently removed a downstream fail-closed assumption in the deployment path (now an
+explicit, tested guard).</p>
+
+<!-- ============================================================ 10 -->
+<h2 id="limits">10. Limitations and accepted residuals</h2>
+
+<p>The loader's claims are bounded, and the boundaries are stated rather than implied.</p>
+<ul>
+  <li><strong>Proven on OVMF, not yet on metal.</strong> Every gate above runs under emulated EDK2
+  firmware. The verified-boot chain is demonstrated; running it on a physical machine additionally requires
+  the two items below.</li>
+  <li><strong>The signed-USB installer ceremony is not built.</strong> Closing the install-time trusted
+  window on owned hardware needs an installer that boots through this same loader under Secure Boot — a
+  second loader baked with an installer command line plus a signed bootable medium. That is named build-side
+  forward-debt, not a present capability.</li>
+  <li><strong>Real-hardware key enrolment is a physical, substrate-gated ceremony, and enrolment alone does
+  not confer sovereignty.</strong> Some rented platforms (AWS Nitro, Azure Trusted Launch) do let an operator enrol
+  their own PK/KEK/db, but the firmware that enforces those keys and the hypervisor beneath stay the
+  provider's, so the enforcement root is still rented. An operator-owned root of trust needs owned hardware,
+  where enrolment is additionally a hands-on ceremony performed at the machine.</li>
+  <li><strong>Key backup and recovery are the operator's procedure, not the appliance's.</strong> The
+  sovereign root keys are not escrowed by the box; their off-host backup is the operator's posture, and
+  recovery from a lost PK is a physical-presence reset to Setup Mode — bounded by the chosen board exposing
+  operator-controlled key clearing (§7.4). A lost <code>db</code> key blocks new signing but not running
+  boxes.</li>
+  <li><strong>Vendor firmware and SPI flash sit below the platform key.</strong> A firmware implant —
+  supply-chain or physical flash programming — can fake the entire chain, including the
+  <code>SecureBoot</code> variable. Owned hardware shrinks this floor from "provider hypervisor, structurally
+  unauditable" to "board-vendor firmware plus physical custody," smaller but not zero. The mitigations are
+  procedural; vendor-keyed boot-guard anchors bring no operator sovereignty.</li>
+  <li><strong>The physical re-key attacker is detected, not prevented.</strong> The §7.3 exact-set check
+  raises the cost and leaves a durable operator-checkable trace, but its structural close is deferred:
+  TPM-measured boot, so that a re-keyed chain changes the measurements and seals become unavailable. At-rest
+  confidentiality of the persistence layer is likewise out of this loader's scope.</li>
+</ul>
+
+<div class="callout">
+  <span class="tag">The shape of the result</span>
+  Eleven kilobytes of operator-frozen code replace the cluster of kernel-configuration symbols the earlier
+  design depended on. Every pre-kernel byte is verified against keys the operator roots, no boot-time input
+  can change what boots or how, and the trusted surface is small enough to audit end to end. What remains
+  before this drives a real machine — the signed installer and hardware enrolment — is stated as forward-debt
+  above.
+</div>
+
+<!-- ============================================================ glossary -->
+<h2 id="glossary">Appendix — glossary</h2>
+<table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>PK</code> / <code>KEK</code> / <code>db</code> / <code>dbx</code></td><td>The Secure Boot variable hierarchy: Platform Key (the root authorising KEK updates), Key Exchange Key (authorising db/dbx updates), the signature database of trusted image signers, and its revocation list.</td></tr>
+<tr><td>Authenticode</td><td>The PE signature format Secure Boot verifies — a PKCS#7 structure in the image's certificate table, over a hash that excludes the checksum and the certificate table itself.</td></tr>
+<tr><td><code>LoadImage</code> / <code>StartImage</code></td><td>UEFI boot services that load (and, under Secure Boot, verify) and then transfer control to a PE image. Rambutan loads the kernel as a buffer and relies on the load step to re-verify it against <code>db</code>.</td></tr>
+<tr><td><code>LoadOptions</code></td><td>A field a UEFI boot manager passes to a launched image. The kernel reads its command line from here; rambutan never reads its own and sets the kernel's to a constant.</td></tr>
+<tr><td>LoadFile2 / <code>LINUX_EFI_INITRD_MEDIA_GUID</code></td><td>The Linux UEFI boot ABI for an initramfs: the kernel stub locates a handle bearing this well-known GUID and pulls the initramfs through its <code>EFI_LOAD_FILE2_PROTOCOL</code>. Rambutan provides that handle over a digest-verified buffer.</td></tr>
+<tr><td>EDK2 / OVMF</td><td>The open-source UEFI reference implementation, and its QEMU-targeted firmware build — the environment the loader's behaviour is proven against.</td></tr>
+<tr><td>dm-verity / <code>PARTUUID</code></td><td>The kernel's block-integrity target (a Merkle tree over the read-only rootfs) and the GPT partition identifier the baked command line uses to name the rootfs partition.</td></tr>
+<tr><td>ESP</td><td>The EFI System Partition — the FAT filesystem from which firmware loads the boot program; here it carries the signed loader, the kernel, and the initramfs.</td></tr>
+</tbody>
+</table>
+<p class="cap below"><span class="lbl">Table 6.</span> Glossary of terms used in this paper.</p>
+
+<footer>
+  Rambutan — the UEFI Secure Boot loader for the Fruit Basket appliance.<br>
+  Companion to the <em>Fruit Basket</em> engineering white paper. Verified-boot chain proven on OVMF;
+  signed-USB install and real-hardware enrolment are named forward-debt.
+</footer>
+
+</main>
+</div>
+</body>
+</html>
